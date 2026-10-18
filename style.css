@@ -36,8 +36,9 @@
   color-scheme: light;
 }
 
+/* Тёмная тема: по системной настройке; data-theme позволяет переопределить вручную. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #11151c;
     --surface: #1a2029;
     --surface-2: #242b36;
@@ -64,6 +65,33 @@
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c;
+  --surface: #1a2029;
+  --surface-2: #242b36;
+  --text: #e8ecf2;
+  --muted: #98a2b2;
+  --line: #2e3643;
+  --accent: #5b8ff5;
+  --accent-text: #0b1220;
+  --ok: #3ccf7c;
+  --ok-soft: #1c4a31;
+  --bad: #ff6464;
+  --bad-soft: #522424;
+  --warn: #f0b43c;
+
+  --sea: #0a1624;
+  --land: #2a3340;
+  --land-stroke: #66748a;
+  --land-bg: #222a35;
+  --land-bg-stroke: #323c4a;
+  --land-dim: #222a35;
+  --sel: #5b8ff5;
+  --sel-soft: #2c4677;
+  --learned: #22583b;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }

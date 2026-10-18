@@ -118,13 +118,14 @@ for (const mode of ["reverse", "capitals", "blitz"]) {
     await page.waitForTimeout(1900);
   } else {
     for (let k = 0; k < 20; k++) {
+      await page.waitForFunction(() => window.__geogame.ui.session.step === "ask");
       const cur = await page.evaluate(() => window.__geogame.ui.session.cur);
       await tapCode(cur);
       const cap = await page.evaluate((c) => window.__geogame.BY[c].capital, cur);
       if (k === 3) await page.screenshot({ path: path.join(shots, "7-blitz.png") });
       await page.click(`[data-action="choose"][data-cap="${cap}"]`);
-      await page.waitForTimeout(500);
     }
+    await page.waitForFunction(() => window.__geogame.ui.session.done);
     const res = await page.textContent("#page");
     check(res.includes("20 из 20"), "блиц завершён: 20 из 20" + (res.includes("20 из 20") ? "" : " — " + res.replace(/\s+/g, " ").slice(0, 200)));
     await page.screenshot({ path: path.join(shots, "8-blitz-result.png") });
