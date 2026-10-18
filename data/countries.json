@@ -1,0 +1,73 @@
+{
+  "regions": [
+    { "id": "north", "name": "Скандинавия и Балтия" },
+    { "id": "west", "name": "Британия и Бенилюкс" },
+    { "id": "central", "name": "Центральная Европа" },
+    { "id": "southwest", "name": "Юго-Запад" },
+    { "id": "balkans", "name": "Италия и Балканы" },
+    { "id": "east", "name": "Восток" }
+  ],
+  "groups": [
+    { "id": "russia", "name": "Россия" },
+    { "id": "turkey", "name": "Турция" },
+    { "id": "cyprus", "name": "Кипр" },
+    { "id": "caucasus", "name": "Кавказ (Грузия, Армения, Азербайджан)" }
+  ],
+  "countries": [
+    { "code": "IS", "name": "Исландия", "capital": "Рейкьявик", "region": "north" },
+    { "code": "NO", "name": "Норвегия", "capital": "Осло", "region": "north" },
+    { "code": "SE", "name": "Швеция", "capital": "Стокгольм", "region": "north" },
+    { "code": "FI", "name": "Финляндия", "capital": "Хельсинки", "region": "north" },
+    { "code": "DK", "name": "Дания", "capital": "Копенгаген", "region": "north" },
+    { "code": "EE", "name": "Эстония", "capital": "Таллин", "region": "north" },
+    { "code": "LV", "name": "Латвия", "capital": "Рига", "region": "north" },
+    { "code": "LT", "name": "Литва", "capital": "Вильнюс", "region": "north" },
+
+    { "code": "GB", "name": "Великобритания", "capital": "Лондон", "region": "west" },
+    { "code": "IE", "name": "Ирландия", "capital": "Дублин", "region": "west" },
+    { "code": "NL", "name": "Нидерланды", "capital": "Амстердам", "region": "west" },
+    { "code": "BE", "name": "Бельгия", "capital": "Брюссель", "region": "west" },
+    { "code": "LU", "name": "Люксембург", "capital": "Люксембург", "region": "west", "micro": [6.13, 49.61] },
+
+    { "code": "DE", "name": "Германия", "capital": "Берлин", "region": "central" },
+    { "code": "PL", "name": "Польша", "capital": "Варшава", "region": "central" },
+    { "code": "CZ", "name": "Чехия", "capital": "Прага", "region": "central" },
+    { "code": "SK", "name": "Словакия", "capital": "Братислава", "region": "central" },
+    { "code": "AT", "name": "Австрия", "capital": "Вена", "region": "central" },
+    { "code": "CH", "name": "Швейцария", "capital": "Берн", "region": "central" },
+    { "code": "LI", "name": "Лихтенштейн", "capital": "Вадуц", "region": "central", "micro": [9.55, 47.16] },
+    { "code": "HU", "name": "Венгрия", "capital": "Будапешт", "region": "central" },
+
+    { "code": "FR", "name": "Франция", "capital": "Париж", "region": "southwest" },
+    { "code": "ES", "name": "Испания", "capital": "Мадрид", "region": "southwest" },
+    { "code": "PT", "name": "Португалия", "capital": "Лиссабон", "region": "southwest" },
+    { "code": "AD", "name": "Андорра", "capital": "Андорра-ла-Велья", "region": "southwest", "micro": [1.55, 42.54] },
+    { "code": "MC", "name": "Монако", "capital": "Монако", "region": "southwest", "micro": [7.42, 43.74] },
+
+    { "code": "IT", "name": "Италия", "capital": "Рим", "region": "balkans" },
+    { "code": "SM", "name": "Сан-Марино", "capital": "Сан-Марино", "region": "balkans", "micro": [12.46, 43.94] },
+    { "code": "VA", "name": "Ватикан", "capital": "Ватикан", "region": "balkans", "micro": [12.45, 41.9] },
+    { "code": "MT", "name": "Мальта", "capital": "Валлетта", "region": "balkans", "micro": [14.44, 35.89] },
+    { "code": "SI", "name": "Словения", "capital": "Любляна", "region": "balkans" },
+    { "code": "HR", "name": "Хорватия", "capital": "Загреб", "region": "balkans" },
+    { "code": "BA", "name": "Босния и Герцеговина", "capital": "Сараево", "region": "balkans" },
+    { "code": "RS", "name": "Сербия", "capital": "Белград", "region": "balkans" },
+    { "code": "ME", "name": "Черногория", "capital": "Подгорица", "region": "balkans" },
+    { "code": "XK", "name": "Косово", "capital": "Приштина", "region": "balkans" },
+    { "code": "AL", "name": "Албания", "capital": "Тирана", "region": "balkans" },
+    { "code": "MK", "name": "Северная Македония", "capital": "Скопье", "region": "balkans" },
+    { "code": "GR", "name": "Греция", "capital": "Афины", "region": "balkans" },
+    { "code": "BG", "name": "Болгария", "capital": "София", "region": "balkans" },
+    { "code": "CY", "name": "Кипр", "capital": "Никосия", "region": "balkans", "group": "cyprus" },
+
+    { "code": "RO", "name": "Румыния", "capital": "Бухарест", "region": "east" },
+    { "code": "MD", "name": "Молдова", "capital": "Кишинёв", "region": "east" },
+    { "code": "UA", "name": "Украина", "capital": "Киев", "region": "east" },
+    { "code": "BY", "name": "Беларусь", "capital": "Минск", "region": "east" },
+    { "code": "RU", "name": "Россия", "capital": "Москва", "region": "east", "group": "russia" },
+    { "code": "TR", "name": "Турция", "capital": "Анкара", "region": "east", "group": "turkey" },
+    { "code": "GE", "name": "Грузия", "capital": "Тбилиси", "region": "east", "group": "caucasus" },
+    { "code": "AM", "name": "Армения", "capital": "Ереван", "region": "east", "group": "caucasus" },
+    { "code": "AZ", "name": "Азербайджан", "capital": "Баку", "region": "east", "group": "caucasus" }
+  ]
+}

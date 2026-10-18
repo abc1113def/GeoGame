@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Страны Европы</title>
+  <meta name="description" content="Учим положение стран Европы на карте и их столицы. Работает офлайн.">
+  <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#11151c" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Европа">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar"></header>
+
+    <main id="main">
+      <div id="mapWrap">
+        <svg id="map" aria-label="Карта Европы"></svg>
+        <button id="resetView" class="fab" type="button" aria-label="Сбросить вид" title="Сбросить вид">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+        </button>
+        <div id="flash" aria-live="polite"></div>
+      </div>
+      <section id="panel"></section>
+
+      <section id="page" class="page" hidden></section>
+    </main>
+
+    <nav id="tabbar" aria-label="Разделы">
+      <button type="button" data-tab="map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4Zm0 0v13.5m6-11v13.5" /></svg>
+        <span>Карта</span>
+      </button>
+      <button type="button" data-tab="test">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></svg>
+        <span>Тест</span>
+      </button>
+      <button type="button" data-tab="errors">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 2.8 19.5h18.4L12 3.5Zm0 6v4.5m0 2.6v.4" /></svg>
+        <span>Ошибки</span><b class="badge" id="errBadge" hidden></b>
+      </button>
+      <button type="button" data-tab="stats">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m5.3 10V4m5.4 16v-7M20 20V7" /></svg>
+        <span>Статистика</span>
+      </button>
+    </nav>
+  </div>
+
+  <div id="sheet" class="overlay" hidden></div>
+
+  <script src="vendor/d3.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

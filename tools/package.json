@@ -1,0 +1,16 @@
+{
+  "name": "geogame-tools",
+  "private": true,
+  "description": "Одноразовые генераторы данных и иконок. Приложению они не нужны.",
+  "scripts": {
+    "geo": "node build-geo.mjs",
+    "icons": "node build-icons.mjs",
+    "test": "node smoke-test.mjs"
+  },
+  "devDependencies": {
+    "d3": "7.9.0",
+    "d3-geo-projection": "4.0.0",
+    "topojson-client": "3.1.0",
+    "world-atlas": "2.0.2"
+  }
+}
