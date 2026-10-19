@@ -1,5 +1,5 @@
 /* Service worker: кэширует всё приложение для работы офлайн. */
-const VERSION = "geogame-v5";
+const VERSION = "geogame-v6";
 const ASSETS = [
   "./",
   "index.html",

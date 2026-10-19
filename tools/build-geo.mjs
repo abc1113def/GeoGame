@@ -44,10 +44,13 @@ const ASIA = {
 
 // Рамка обрезки в градусах: [запад, юг, восток, север].
 const CONTINENTS = [
-  { out: "europe.geojson", data: "countries.json", names: EUROPE, box: [-60, 18, 75, 84] },
+  { out: "europe.geojson", data: "countries.json", names: EUROPE, box: [-75, 15, 140, 85] },
   { out: "asia.geojson", data: "asia.json", names: ASIA, box: [5, -20, 180, 82] },
 ];
 let clipper;
+// Без обрезки: только округление. Играбельные страны не режем — плоская обрезка по рамке
+// у контура, выходящего за её край (Россия), рисовала ложные полосы вдоль края рамки.
+const noClip = geoIdentity().reflectY(true);
 
 function round(geom, digits) {
   const k = 10 ** digits;
@@ -76,8 +79,8 @@ function round(geom, digits) {
   return null;
 }
 
-function clip(geometry, digits) {
-  const projected = geoProject({ type: "Feature", properties: {}, geometry }, clipper);
+function clip(geometry, digits, projection = clipper) {
+  const projected = geoProject({ type: "Feature", properties: {}, geometry }, projection);
   if (!projected || !projected.geometry) return null;
   const g = round(projected.geometry, digits);
   if (!g) return null;
@@ -106,7 +109,7 @@ for (const { out: outFile, data, names, box } of CONTINENTS) {
   const features = [];
   for (const [code, geoms] of Object.entries(byCode)) {
     const merged = geoms.length > 1 ? topojson.merge(detailed, geoms) : topojson.feature(detailed, geoms[0]).geometry;
-    const g = clip(merged, 3);
+    const g = clip(merged, 3, noClip);
     if (!g) throw new Error("Пустая геометрия: " + code);
     features.push({ type: "Feature", properties: { code }, geometry: g });
   }

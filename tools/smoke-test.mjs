@@ -223,6 +223,9 @@ await page.click('[data-action="closeSheet"]');
 check(!(await page.$eval('#map path[data-code="RU"]', (e) => e.classList.contains("off"))), "переключатель «Россия» включает страну");
 const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("geogame.v1")).settings.byCont.europe.groups.russia);
 check(persisted === true, "настройка сохранена в localStorage");
+// Регрессия: контур России не должен уходить на запад дальше Исландии (были ложные полосы вдоль края карты).
+const ruOk = await page.evaluate(() => { const { M } = window.__geogame; return M.bounds.RU[0][0] > M.label.IS[0]; });
+check(ruOk, "контур России без ложных полос на западе");
 
 console.log("Азия");
 await page.click('#tabbar [data-tab="map"]');
