@@ -3,7 +3,7 @@
 
 (() => {
   const STORE_KEY = "geogame.v1";
-  const BLITZ_N = 20;
+  const LENGTHS = [10, 20, 30, "all"]; // «all» — каждая страна выбранного региона ровно один раз
   const MICRO_R = 10;     // радиус видимого маркера микрогосударства, px
   const MICRO_CORE = 11;  // в этом радиусе (видимый маркер) тап всегда уходит микрогосударству
   const MICRO_HIT = 24;   // невидимый круг: срабатывает, если под пальцем море/фон
@@ -26,7 +26,7 @@
     },
     progress: {},
     tick: 0,
-    blitzBest: null,
+    blitzBest: {}, // рекорды блица: ключ «регион:длина»
   });
 
   function loadStore() {
@@ -39,6 +39,8 @@
           ...s,
           settings: { ...d.settings, ...s.settings, groups: { ...d.settings.groups, ...(s.settings || {}).groups } },
           progress: s.progress || {},
+          // Старый формат: один рекорд на 20 стран.
+          blitzBest: s.blitzBest && "score" in s.blitzBest ? { "all:20": s.blitzBest } : s.blitzBest || {},
         };
       }
     } catch (e) { /* повреждённые данные — начинаем заново */ }
@@ -379,7 +381,7 @@
     reverse: { title: "Обратный режим", desc: "Страна подсвечена — вспомните название и столицу", ico: "🔁" },
     capitals: { title: "Только столицы", desc: "Выберите столицу из 4 вариантов", ico: "🏛️" },
     typing: { title: "Столица с клавиатуры", desc: "Впишите столицу сами, мелкие опечатки прощаются", ico: "⌨️" },
-    blitz: { title: `Блиц · ${BLITZ_N} стран`, desc: "На время: место на карте + столица", ico: "⚡" },
+    blitz: { title: "Блиц", desc: "На время: место на карте + столица", ico: "⚡" },
   };
 
   function learnedCount(list = activeCountries()) {
@@ -477,20 +479,22 @@
     const len = store.settings.sessionLen;
     const regionCount = all.filter((c) => inRegion(c, store.settings.region)).length;
     setPage(`
-      ${Object.entries(MODES).map(([id, m]) => `
-        <button type="button" class="mode ${id === "exam" ? "main" : ""}" data-action="start" data-mode="${id}">
-          <span class="ico" aria-hidden="true">${m.ico}</span>
-          <span class="grow"><b>${esc(m.title)}</b><span>${esc(m.desc)}</span></span>
-        </button>`).join("")}
       <div class="card">
         <h3>Регион · ${regionCount} стран</h3>
         <div class="chips">${regionChips("testRegion")}</div>
       </div>
       <div class="card">
         <h3>Вопросов в сессии</h3>
-        <div class="seg">${[10, 20, 30].map((n) => `<button type="button" data-action="sessionLen" data-n="${n}" aria-pressed="${len === n}">${n}</button>`).join("")}</div>
-        <p class="mt">Чаще спрашиваются новые и ошибочные страны, реже — выученные. Блиц всегда ${BLITZ_N} стран.</p>
-      </div>`);
+        <div class="seg">${LENGTHS.map((n) => `<button type="button" data-action="sessionLen" data-n="${n}" aria-pressed="${len === n}">${n === "all" ? `Все (${regionCount})` : n}</button>`).join("")}</div>
+        <p class="mt">${len === "all"
+          ? "Каждая страна региона спрашивается один раз, в случайном порядке."
+          : "Чаще спрашиваются новые и ошибочные страны, реже — выученные. В блице страны не повторяются."}</p>
+      </div>
+      ${Object.entries(MODES).map(([id, m]) => `
+        <button type="button" class="mode ${id === "exam" ? "main" : ""}" data-action="start" data-mode="${id}">
+          <span class="ico" aria-hidden="true">${m.ico}</span>
+          <span class="grow"><b>${esc(m.title)}</b><span>${esc(m.desc)}</span></span>
+        </button>`).join("")}`);
     $("#panel").innerHTML = "";
   }
 
@@ -500,17 +504,20 @@
     const region = store.settings.region;
     let pool = customPool || activeCountries().filter((c) => inRegion(c, region)).map((c) => c.code);
     if (!pool.length) { flash("В этом регионе нет стран"); return; }
-    let len;
-    if (mode === "blitz") {
-      pool = shuffle(pool).slice(0, BLITZ_N);
-      len = pool.length;
-    } else if (customPool) {
+    const lenSetting = store.settings.sessionLen;
+    let len, order = null;
+    if (customPool) {
       len = Math.max(4, Math.min(30, pool.length * 2));
+    } else if (mode === "blitz" || lenSetting === "all") {
+      // Без повторов: блиц и «Все» идут по перемешанному списку.
+      order = shuffle(pool).slice(0, lenSetting === "all" ? pool.length : lenSetting);
+      len = order.length;
     } else {
-      len = store.settings.sessionLen;
+      len = lenSetting;
     }
     ui.session = {
-      mode, pool, len, custom: !!customPool,
+      mode, pool, len, order, custom: !!customPool,
+      recordKey: mode === "blitz" && !customPool ? `${region}:${lenSetting}` : null,
       i: 0, okCount: 0, history: [], missed: new Set(), results: [],
       started: Date.now(), locRight: 0, capRight: 0, done: false,
     };
@@ -527,7 +534,7 @@
     if (!s) return;
     clearTimeout(s.timer);
     if (s.i >= s.len) return finishSession();
-    s.cur = s.mode === "blitz" ? s.pool[s.i] : pickWeighted(s.pool, s);
+    s.cur = s.order ? s.order[s.i] : pickWeighted(s.pool, s);
     s.history.push(s.cur);
     Object.assign(s, { step: "ask", hinted: false, tapped: null, locOk: null, choice: null, options: null, typed: "", verdict: null });
     M.clearFx();
@@ -735,10 +742,10 @@
     const s = ui.session;
     s.done = true;
     s.elapsed = Date.now() - s.started;
-    if (s.mode === "blitz") {
-      const b = store.blitzBest;
+    if (s.recordKey) {
+      const b = store.blitzBest[s.recordKey];
       const better = !b || s.okCount > b.score || (s.okCount === b.score && s.elapsed < b.ms);
-      if (better && s.len === BLITZ_N) { store.blitzBest = { score: s.okCount, ms: s.elapsed, of: s.len }; s.record = true; save(); }
+      if (better) { store.blitzBest[s.recordKey] = { score: s.okCount, ms: s.elapsed, of: s.len }; s.record = true; save(); }
     }
     M.clearFx();
     render();
@@ -800,7 +807,10 @@
     let answers = 0, right = 0;
     for (const c of all) { const p = peek(c.code); if (p) { answers += p.seen; right += p.right; } }
     const acc = answers ? Math.round((right / answers) * 100) + "%" : "—";
-    const best = store.blitzBest ? `${store.blitzBest.score}/${store.blitzBest.of} · ${fmtTime(store.blitzBest.ms)}` : "—";
+    const lenSetting = store.settings.sessionLen;
+    const bb = store.blitzBest[`all:${lenSetting}`];
+    const best = bb ? `${bb.score}/${bb.of} · ${fmtTime(bb.ms)}` : "—";
+    const bestLabel = `рекорд блица, ${lenSetting === "all" ? "все страны" : lenSetting + " стран"}`;
     const hardest = all.filter((c) => peek(c.code) && peek(c.code).wrong > 0)
       .sort((a, b) => { const pa = peek(a.code), pb = peek(b.code); return pb.wrong / pb.seen - pa.wrong / pa.seen || pb.wrong - pa.wrong; })
       .slice(0, 7);
@@ -813,7 +823,7 @@
         <div class="kpis">
           <div class="kpi"><b>${answers}</b><span>ответов</span></div>
           <div class="kpi"><b>${acc}</b><span>точность</span></div>
-          <div class="kpi"><b style="font-size:15px;line-height:24px">${best}</b><span>рекорд блица</span></div>
+          <div class="kpi"><b style="font-size:15px;line-height:24px">${best}</b><span>${bestLabel}</span></div>
         </div>
       </div>
       <div class="card">
@@ -941,7 +951,7 @@
       confirmDialog("Сбросить весь прогресс?", "Сбросить", () => {
         store.progress = {};
         store.tick = 0;
-        store.blitzBest = null;
+        store.blitzBest = {};
         save();
         updateBadge();
         flash("Прогресс сброшен");
@@ -970,7 +980,7 @@
       render();
     },
     studyClose() { ui.studySel = null; render(); },
-    sessionLen(el) { store.settings.sessionLen = +el.dataset.n; save(); render(); },
+    sessionLen(el) { const n = el.dataset.n; store.settings.sessionLen = n === "all" ? "all" : +n; save(); render(); },
     start(el) { startSession(el.dataset.mode); },
     again() {
       const l = ui.lastSession;

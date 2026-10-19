@@ -466,6 +466,7 @@ svg { display: block; }
 }
 .seg button {
   flex: 1;
+  white-space: nowrap;
   border-radius: 10px;
   min-height: 42px;
   font-size: 15px;

@@ -133,6 +133,18 @@ for (const mode of ["reverse", "capitals", "blitz"]) {
   await page.click('[data-action="quit"]');
 }
 
+console.log("Длина сессии «Все»");
+await page.click('[data-action="sessionLen"][data-n="all"]');
+await page.click('[data-action="start"][data-mode="capitals"]');
+const all = await page.evaluate(() => { const s = window.__geogame.ui.session; return { len: s.len, uniq: new Set(s.order).size }; });
+check(all.len === 44 && all.uniq === 44, `«Все»: ${all.len} вопросов, без повторов (${all.uniq} разных)`);
+await page.click('[data-action="quit"]');
+await page.click('[data-action="sessionLen"][data-n="10"]');
+await page.click('[data-action="start"][data-mode="blitz"]');
+check(await page.evaluate(() => window.__geogame.ui.session.len) === 10, "блиц учитывает выбранную длину (10)");
+await page.click('[data-action="quit"]');
+await page.click('[data-action="sessionLen"][data-n="20"]');
+
 console.log("Столица с клавиатуры");
 await page.click('[data-action="start"][data-mode="typing"]');
 check(await page.evaluate(() => document.activeElement && document.activeElement.id === "capInput"), "поле ввода в фокусе");
