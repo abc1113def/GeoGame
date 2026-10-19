@@ -1,0 +1,24 @@
+{
+  "regions": [
+    { "id": "north", "name": "Север" },
+    { "id": "andes", "name": "Анды" },
+    { "id": "southeast", "name": "Юго-Восток" }
+  ],
+  "groups": [],
+  "countries": [
+    { "code": "CO", "name": "Колумбия", "capital": "Богота", "region": "north" },
+    { "code": "VE", "name": "Венесуэла", "capital": "Каракас", "region": "north" },
+    { "code": "GY", "name": "Гайана", "capital": "Джорджтаун", "region": "north" },
+    { "code": "SR", "name": "Суринам", "capital": "Парамарибо", "region": "north" },
+
+    { "code": "EC", "name": "Эквадор", "capital": "Кито", "region": "andes" },
+    { "code": "PE", "name": "Перу", "capital": "Лима", "region": "andes" },
+    { "code": "BO", "name": "Боливия", "capital": "Сукре", "alt": ["Ла-Пас"], "region": "andes" },
+    { "code": "CL", "name": "Чили", "capital": "Сантьяго", "region": "andes" },
+
+    { "code": "BR", "name": "Бразилия", "capital": "Бразилиа", "region": "southeast" },
+    { "code": "PY", "name": "Парагвай", "capital": "Асунсьон", "region": "southeast" },
+    { "code": "UY", "name": "Уругвай", "capital": "Монтевидео", "region": "southeast" },
+    { "code": "AR", "name": "Аргентина", "capital": "Буэнос-Айрес", "region": "southeast" }
+  ]
+}

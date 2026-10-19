@@ -1,4 +1,4 @@
-// Строит data/europe.geojson и data/asia.geojson из Natural Earth (пакет world-atlas).
+// Строит контуры частей света (data/*.geojson) из Natural Earth (пакет world-atlas).
 // Играбельные страны берутся из 50m (детальнее), фон — из 110m (легче).
 // Запуск: cd tools && npm i && node build-geo.mjs
 import fs from "node:fs";
@@ -42,10 +42,31 @@ const ASIA = {
   Indonesia: "ID", Philippines: "PH", Brunei: "BN", "Timor-Leste": "TL",
 };
 
-// Рамка обрезки в градусах: [запад, юг, восток, север].
+const AFRICA = {
+  Morocco: "MA", Algeria: "DZ", Tunisia: "TN", Libya: "LY", Egypt: "EG", Sudan: "SD", "W. Sahara": "EH",
+  Mauritania: "MR", Senegal: "SN", Gambia: "GM", "Guinea-Bissau": "GW", Guinea: "GN", "Sierra Leone": "SL",
+  Liberia: "LR", "Côte d'Ivoire": "CI", Mali: "ML", "Burkina Faso": "BF", Ghana: "GH", Togo: "TG", Benin: "BJ",
+  Niger: "NE", Nigeria: "NG", "Cabo Verde": "CV",
+  Chad: "TD", Cameroon: "CM", "Central African Rep.": "CF", "Eq. Guinea": "GQ", Gabon: "GA", Congo: "CG",
+  "Dem. Rep. Congo": "CD", "São Tomé and Principe": "ST",
+  "S. Sudan": "SS", Ethiopia: "ET", Eritrea: "ER", Djibouti: "DJ", Somalia: "SO", Somaliland: "SO", Kenya: "KE",
+  Uganda: "UG", Rwanda: "RW", Burundi: "BI", Tanzania: "TZ", Seychelles: "SC", Comoros: "KM", Madagascar: "MG",
+  Mauritius: "MU",
+  Angola: "AO", Zambia: "ZM", Malawi: "MW", Mozambique: "MZ", Zimbabwe: "ZW", Namibia: "NA", Botswana: "BW",
+  "South Africa": "ZA", Lesotho: "LS", eSwatini: "SZ",
+};
+
+const SAMERICA = {
+  Colombia: "CO", Venezuela: "VE", Guyana: "GY", Suriname: "SR", Ecuador: "EC", Peru: "PE", Bolivia: "BO",
+  Chile: "CL", Brazil: "BR", Paraguay: "PY", Uruguay: "UY", Argentina: "AR",
+};
+
+// Рамка обрезки фона в градусах: [запад, юг, восток, север].
 const CONTINENTS = [
   { out: "europe.geojson", data: "countries.json", names: EUROPE, box: [-75, 15, 140, 85] },
   { out: "asia.geojson", data: "asia.json", names: ASIA, box: [5, -20, 180, 82] },
+  { out: "africa.geojson", data: "africa.json", names: AFRICA, box: [-40, -45, 75, 45] },
+  { out: "samerica.geojson", data: "samerica.json", names: SAMERICA, box: [-110, -62, -20, 20] },
 ];
 let clipper;
 // Без обрезки: только округление. Играбельные страны не режем — плоская обрезка по рамке
@@ -94,6 +115,16 @@ function clip(geometry, digits, projection = clipper) {
   return g;
 }
 
+// Кольца, пересекающие 180-й меридиан (Фиджи, Чукотка), плоская обрезка превращает
+// в полосу через всю карту. Для фона их проще выбросить.
+function dropAntimeridian(geom) {
+  if (!geom) return null;
+  const bad = (poly) => poly[0].some(([x]) => x > 170) && poly[0].some(([x]) => x < -170);
+  const polys = (geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates).filter((p) => !bad(p));
+  if (!polys.length) return null;
+  return polys.length === 1 ? { type: "Polygon", coordinates: polys[0] } : { type: "MultiPolygon", coordinates: polys };
+}
+
 const detailed = load("countries-50m.json");
 const coarse = load("countries-110m.json");
 
@@ -118,13 +149,21 @@ for (const { out: outFile, data, names, box } of CONTINENTS) {
   const playableNames = new Set(Object.keys(names));
   for (const g of coarse.objects.countries.geometries) {
     if (playableNames.has(g.properties.name)) continue;
-    const geom = clip(topojson.feature(coarse, g).geometry, 2);
+    const geom = clip(dropAntimeridian(topojson.feature(coarse, g).geometry), 2);
     if (geom) features.push({ type: "Feature", properties: { bg: 1 }, geometry: geom });
   }
 
   const countries = JSON.parse(fs.readFileSync(path.join(root, "data", data), "utf8")).countries;
   const missing = countries.filter((c) => !byCode[c.code]).map((c) => c.code);
   if (missing.length) throw new Error("Нет на карте: " + missing.join(", "));
+
+  // Защита от ложных полос: широкий и очень низкий по широте объект — почти наверняка артефакт.
+  for (const f of features) {
+    let x0 = 999, x1 = -999, y0 = 999, y1 = -999;
+    const walk = (a) => (Array.isArray(a[0]) ? a.forEach(walk) : (x0 = Math.min(x0, a[0]), x1 = Math.max(x1, a[0]), y0 = Math.min(y0, a[1]), y1 = Math.max(y1, a[1])));
+    walk(f.geometry.coordinates);
+    if (x1 - x0 > 60 && y1 - y0 < 5) throw new Error(`${outFile}: подозрительная полоса ${JSON.stringify(f.properties)}`);
+  }
 
   const out = { type: "FeatureCollection", features };
   fs.writeFileSync(path.join(root, "data", outFile), JSON.stringify(out));

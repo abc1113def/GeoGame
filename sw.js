@@ -1,5 +1,5 @@
 /* Service worker: кэширует всё приложение для работы офлайн. */
-const VERSION = "geogame-v6";
+const VERSION = "geogame-v7";
 const ASSETS = [
   "./",
   "index.html",
@@ -10,6 +10,10 @@ const ASSETS = [
   "data/europe.geojson",
   "data/asia.json",
   "data/asia.geojson",
+  "data/africa.json",
+  "data/africa.geojson",
+  "data/samerica.json",
+  "data/samerica.geojson",
   "manifest.webmanifest",
   "icons/icon-180.png",
   "icons/icon-192.png",

@@ -1,0 +1,73 @@
+{
+  "regions": [
+    { "id": "north", "name": "Северная Африка" },
+    { "id": "west", "name": "Западная Африка" },
+    { "id": "central", "name": "Центральная Африка" },
+    { "id": "east", "name": "Восточная Африка" },
+    { "id": "south", "name": "Южная Африка" }
+  ],
+  "groups": [
+    { "id": "wsahara", "name": "Западная Сахара" }
+  ],
+  "countries": [
+    { "code": "MA", "name": "Марокко", "capital": "Рабат", "region": "north" },
+    { "code": "DZ", "name": "Алжир", "capital": "Алжир", "region": "north" },
+    { "code": "TN", "name": "Тунис", "capital": "Тунис", "region": "north" },
+    { "code": "LY", "name": "Ливия", "capital": "Триполи", "region": "north" },
+    { "code": "EG", "name": "Египет", "capital": "Каир", "region": "north" },
+    { "code": "SD", "name": "Судан", "capital": "Хартум", "region": "north" },
+    { "code": "EH", "name": "Западная Сахара", "capital": "Эль-Аюн", "region": "north", "group": "wsahara" },
+
+    { "code": "MR", "name": "Мавритания", "capital": "Нуакшот", "region": "west" },
+    { "code": "SN", "name": "Сенегал", "capital": "Дакар", "region": "west" },
+    { "code": "GM", "name": "Гамбия", "capital": "Банджул", "region": "west" },
+    { "code": "GW", "name": "Гвинея-Бисау", "capital": "Бисау", "region": "west" },
+    { "code": "GN", "name": "Гвинея", "capital": "Конакри", "region": "west" },
+    { "code": "SL", "name": "Сьерра-Леоне", "capital": "Фритаун", "region": "west" },
+    { "code": "LR", "name": "Либерия", "capital": "Монровия", "region": "west" },
+    { "code": "CI", "name": "Кот-д’Ивуар", "capital": "Ямусукро", "region": "west" },
+    { "code": "ML", "name": "Мали", "capital": "Бамако", "region": "west" },
+    { "code": "BF", "name": "Буркина-Фасо", "capital": "Уагадугу", "region": "west" },
+    { "code": "GH", "name": "Гана", "capital": "Аккра", "region": "west" },
+    { "code": "TG", "name": "Того", "capital": "Ломе", "region": "west" },
+    { "code": "BJ", "name": "Бенин", "capital": "Порто-Ново", "alt": ["Котону"], "region": "west" },
+    { "code": "NE", "name": "Нигер", "capital": "Ниамей", "region": "west" },
+    { "code": "NG", "name": "Нигерия", "capital": "Абуджа", "region": "west" },
+    { "code": "CV", "name": "Кабо-Верде", "capital": "Прая", "region": "west", "micro": [-23.6, 15.1] },
+
+    { "code": "TD", "name": "Чад", "capital": "Нджамена", "region": "central" },
+    { "code": "CM", "name": "Камерун", "capital": "Яунде", "region": "central" },
+    { "code": "CF", "name": "ЦАР", "capital": "Банги", "region": "central" },
+    { "code": "GQ", "name": "Экваториальная Гвинея", "capital": "Малабо", "region": "central" },
+    { "code": "GA", "name": "Габон", "capital": "Либревиль", "region": "central" },
+    { "code": "CG", "name": "Республика Конго", "capital": "Браззавиль", "region": "central" },
+    { "code": "CD", "name": "ДР Конго", "capital": "Киншаса", "region": "central" },
+    { "code": "ST", "name": "Сан-Томе и Принсипи", "capital": "Сан-Томе", "region": "central", "micro": [6.6, 0.3] },
+
+    { "code": "SS", "name": "Южный Судан", "capital": "Джуба", "region": "east" },
+    { "code": "ET", "name": "Эфиопия", "capital": "Аддис-Абеба", "region": "east" },
+    { "code": "ER", "name": "Эритрея", "capital": "Асмэра", "alt": ["Асмара"], "region": "east" },
+    { "code": "DJ", "name": "Джибути", "capital": "Джибути", "region": "east" },
+    { "code": "SO", "name": "Сомали", "capital": "Могадишо", "region": "east" },
+    { "code": "KE", "name": "Кения", "capital": "Найроби", "region": "east" },
+    { "code": "UG", "name": "Уганда", "capital": "Кампала", "region": "east" },
+    { "code": "RW", "name": "Руанда", "capital": "Кигали", "region": "east" },
+    { "code": "BI", "name": "Бурунди", "capital": "Гитега", "region": "east" },
+    { "code": "TZ", "name": "Танзания", "capital": "Додома", "region": "east" },
+    { "code": "SC", "name": "Сейшелы", "capital": "Виктория", "region": "east", "micro": [55.45, -4.62] },
+    { "code": "KM", "name": "Коморы", "capital": "Морони", "region": "east", "micro": [43.6, -11.8] },
+    { "code": "MG", "name": "Мадагаскар", "capital": "Антананариву", "region": "east" },
+    { "code": "MU", "name": "Маврикий", "capital": "Порт-Луи", "region": "east", "micro": [57.55, -20.25] },
+
+    { "code": "AO", "name": "Ангола", "capital": "Луанда", "region": "south" },
+    { "code": "ZM", "name": "Замбия", "capital": "Лусака", "region": "south" },
+    { "code": "MW", "name": "Малави", "capital": "Лилонгве", "region": "south" },
+    { "code": "MZ", "name": "Мозамбик", "capital": "Мапуту", "region": "south" },
+    { "code": "ZW", "name": "Зимбабве", "capital": "Хараре", "region": "south" },
+    { "code": "NA", "name": "Намибия", "capital": "Виндхук", "region": "south" },
+    { "code": "BW", "name": "Ботсвана", "capital": "Габороне", "region": "south" },
+    { "code": "ZA", "name": "ЮАР", "capital": "Претория", "alt": ["Кейптаун", "Блумфонтейн"], "region": "south" },
+    { "code": "LS", "name": "Лесото", "capital": "Масеру", "region": "south" },
+    { "code": "SZ", "name": "Эсватини", "capital": "Мбабане", "alt": ["Лобамба"], "region": "south" }
+  ]
+}

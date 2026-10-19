@@ -43,6 +43,8 @@ check(markers === "AD,LI,LU,MC,MT,SM,VA", `маркеры микрогосуда
 await page.screenshot({ path: path.join(shots, "1-map.png") });
 
 async function tapCode(code, dx = 0, dy = 0) {
+  // Дождаться конца анимации масштаба, иначе координаты страны устаревают.
+  await page.waitForFunction(() => !document.querySelector("#map").__transition);
   const pt = await page.evaluate((c) => {
     const { M } = window.__geogame;
     const r = document.querySelector("#map").getBoundingClientRect();
@@ -263,6 +265,35 @@ await page.click('[data-action="pickContinent"]');
 await page.click('[data-action="setContinent"][data-cont="europe"]');
 await page.waitForFunction(() => window.__geogame.CONT === "europe" && document.querySelector('#map path[data-code="FR"]'));
 check(await page.evaluate(() => JSON.parse(localStorage.getItem("geogame.v1")).settings.continent) === "europe", "выбор части света сохраняется");
+
+for (const [cont, total, micro, big] of [["africa", 54, ["CV", "ST", "SC", "KM", "MU", "GM"], ["EG", "CD", "ZA", "MG"]], ["samerica", 12, [], ["BR", "CL", "AR", "UY"]]]) {
+  console.log(cont === "africa" ? "Африка" : "Южная Америка");
+  await page.click('#tabbar [data-tab="map"]');
+  await page.click('[data-action="pickContinent"]');
+  await page.click(`[data-action="setContinent"][data-cont="${cont}"]`);
+  await page.waitForFunction((c) => window.__geogame.CONT === c && window.__geogame.M.label, cont);
+  const n = await page.evaluate(() => document.querySelectorAll("#map path[data-code]:not(.off)").length);
+  check(n === total, `${cont}: активных стран ${n}`);
+  for (const code of [...micro, ...big]) {
+    await page.evaluate(() => { window.__geogame.ui.studySel = null; });
+    const got = await tapCode(code);
+    check(got === code, `${cont}: тап ${code} -> ${got}`);
+  }
+  await page.screenshot({ path: path.join(shots, `17-${cont}.png`) });
+  await page.click('#tabbar [data-tab="test"]');
+  await page.click('[data-action="start"][data-mode="exam"]');
+  const cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+  await tapCode(cur);
+  const c = await page.evaluate((k) => window.__geogame.BY[k], cur);
+  await page.fill("#capInput", c.capital);
+  await page.press("#capInput", "Enter");
+  check(await page.evaluate(() => window.__geogame.ui.session.okCount) === 1, `${cont}, экзамен: ${c.name} — ${c.capital}`);
+  await page.click('[data-action="quit"]');
+  await page.click('#tabbar [data-tab="map"]');
+}
+await page.click('[data-action="pickContinent"]');
+await page.click('[data-action="setContinent"][data-cont="europe"]');
+await page.waitForFunction(() => window.__geogame.CONT === "europe");
 
 console.log("Service worker и офлайн");
 const swState = await page.evaluate(async () => {

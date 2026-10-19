@@ -13,6 +13,7 @@
   const CONTINENTS = {
     europe: {
       name: "Европа",
+      icon: "🏰",
       data: "data/countries.json",
       geo: "data/europe.geojson",
       projection: () => d3.geoConicConformal().parallels([40, 62]).rotate([-14, 0]),
@@ -28,6 +29,7 @@
     },
     asia: {
       name: "Азия",
+      icon: "🏯",
       data: "data/asia.json",
       geo: "data/asia.geojson",
       projection: () => d3.geoConicConformal().parallels([10, 45]).rotate([-88, 0]),
@@ -38,6 +40,27 @@
         return pts;
       },
       labels: { RU: [100, 62], VN: [105.9, 21.0], MY: [102.0, 4.0], ID: [113.9, -0.8], TJ: [70.6, 38.7] },
+      autoMarker: 10,
+    },
+    africa: {
+      name: "Африка",
+      icon: "🦁",
+      data: "data/africa.json",
+      geo: "data/africa.geojson",
+      projection: () => d3.geoMercator(),
+      focus: () => [[-25.4, 16.5], [-17.5, 21], [-6, 36], [10.5, 37.5], [33, 31.5], [43.5, 12.5], [51.5, 11.8], [56, -4], [58, -20.5], [50.5, -25.5], [20, -35], [11.5, -18]],
+      labels: { SO: [45.0, 3.5] },
+      autoMarker: 10,
+    },
+    samerica: {
+      name: "Южная Америка",
+      short: "Юж. Америка",
+      icon: "🦙",
+      data: "data/samerica.json",
+      geo: "data/samerica.geojson",
+      projection: () => d3.geoConicConformal().parallels([-5, -40]).rotate([60, 0]),
+      focus: () => [[-81.5, -4.5], [-77.5, 8], [-71.5, 12.5], [-60, 10.8], [-51, 4.5], [-34.8, -7.2], [-48, -28], [-57, -38], [-65, -55.5], [-75.5, -52], [-74, -40]],
+      labels: {},
       autoMarker: 10,
     },
   };
@@ -317,6 +340,7 @@
 
       this.label = {};
       this.size = {};
+      this.thin = {};
       this.bounds = {};
       for (const [code, f] of this.byCode) {
         const c = BY[code];
@@ -329,6 +353,7 @@
         const b = this.path.bounds(g);
         this.bounds[code] = b;
         this.size[code] = Math.max(b[1][0] - b[0][0], b[1][1] - b[0][1]);
+        this.thin[code] = Math.min(b[1][0] - b[0][0], b[1][1] - b[0][1]); // узкие страны (Гамбия, Израиль) тоже трудно нажать
       }
       this.zoom.extent([[0, 0], [w, h]]).translateExtent([[-w * 0.5, -h * 0.5], [w * 1.5, h * 1.5]]);
       this.svg.call(this.zoom.transform, d3.zoomIdentity);
@@ -345,7 +370,7 @@
         .attr("transform", (c) => { const [x, y] = this.screenPt(c.code); return `translate(${x},${y})`; })
         .classed("hidden", (c) => {
           // Когда страна сама стала крупной, маркер не нужен.
-          const hide = !isActive(c) || this.size[c.code] * this.t.k > (c.micro ? 34 : this.conf.autoMarker);
+          const hide = !isActive(c) || (c.micro ? this.size[c.code] * this.t.k > 34 : this.thin[c.code] * this.t.k > this.conf.autoMarker);
           this.markerHidden[c.code] = hide;
           return hide;
         });
@@ -445,7 +470,7 @@
   function contPill() {
     const all = activeCountries();
     return `<button type="button" class="cont-pill" data-action="pickContinent" aria-label="Часть света: ${esc(CONTINENTS[CONT].name)}">
-      ${esc(CONTINENTS[CONT].name)} <small>${learnedCount(all)}/${all.length}</small>${ICON_CHEVRON}</button>`;
+      ${esc(CONTINENTS[CONT].short || CONTINENTS[CONT].name)} <small>${learnedCount(all)}/${all.length}</small>${ICON_CHEVRON}</button>`;
   }
 
   function regionChips(action) {
@@ -959,11 +984,11 @@
     sheet.innerHTML = `
       <div class="sheet" role="dialog" aria-label="Настройки">
         <div class="toprow"><h2 style="flex:1;margin:0">Настройки</h2><button type="button" class="iconbtn" data-action="closeSheet" aria-label="Закрыть">${ICON_CLOSE}</button></div>
-        <div class="card mt">
+        ${DATA.groups.length ? `<div class="card mt">
           <h3>Дополнительные страны · ${esc(CONTINENTS[CONT].name)}</h3>
           ${DATA.groups.map((g) => toggleRow("group:" + g.id, g.name, "", !!cs().groups[g.id])).join("")}
-        </div>
-        <div class="card">
+        </div>` : ""}
+        <div class="card mt">
           <h3>Поведение</h3>
           ${toggleRow("vibrate", "Вибрация при ошибке", "Если устройство поддерживает (в iOS Safari недоступна)", st.vibrate)}
           ${toggleRow("sound", "Звук", "Короткий сигнал при ответе", st.sound)}
@@ -985,10 +1010,10 @@
           const list = ALL[key].countries.filter((c) => !c.group || store.settings.byCont[key].groups[c.group]);
           const learned = list.filter((c) => isLearned(c.code)).length;
           return `<button type="button" class="mode ${key === CONT ? "main" : ""}" data-action="setContinent" data-cont="${key}">
-            <span class="ico" aria-hidden="true">${key === "europe" ? "🏰" : "🏯"}</span>
+            <span class="ico" aria-hidden="true">${conf.icon}</span>
             <span class="grow"><b>${esc(conf.name)}</b><span>${list.length} стран · выучено ${learned}</span></span></button>`;
         }).join("")}
-        <p class="muted center-text" style="font-size:13px">Прогресс по странам общий: Турция или Кипр, выученные в одной части света, считаются выученными и в другой.</p>
+        <p class="muted center-text" style="font-size:13px">Прогресс по странам общий: Турция или Кипр, выученные в Европе, считаются выученными и в Азии.</p>
       </div>`;
     sheet.hidden = false;
   }
@@ -1011,6 +1036,7 @@
     save();
     useData(key);
     M.setGeo(GEO[key]);
+    M.paint(() => "");
     updateBadge();
     render();
   }
