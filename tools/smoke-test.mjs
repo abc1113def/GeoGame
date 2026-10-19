@@ -221,8 +221,45 @@ await page.click('[data-action="settings"]');
 await page.click('[data-key="group:russia"]');
 await page.click('[data-action="closeSheet"]');
 check(!(await page.$eval('#map path[data-code="RU"]', (e) => e.classList.contains("off"))), "переключатель «Россия» включает страну");
-const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("geogame.v1")).settings.groups.russia);
+const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("geogame.v1")).settings.byCont.europe.groups.russia);
 check(persisted === true, "настройка сохранена в localStorage");
+
+console.log("Азия");
+await page.click('#tabbar [data-tab="map"]');
+await page.click('[data-action="pickContinent"]');
+await page.click('[data-action="setContinent"][data-cont="asia"]');
+await page.waitForFunction(() => window.__geogame.CONT === "asia" && document.querySelector('#map path[data-code="CN"]'));
+const asia = await page.evaluate(() => ({
+  n: document.querySelectorAll("#map path[data-code]:not(.off)").length,
+  off: [...document.querySelectorAll("#map path.off")].map((e) => e.dataset.code).sort().join(","),
+}));
+check(asia.n === 46, `Азия: активных стран на карте ${asia.n}`);
+check(asia.off === "CY,PS,RU,TW", `опциональные страны Азии выключены: ${asia.off}`);
+await page.screenshot({ path: path.join(shots, "15-asia.png") });
+for (const code of ["SG", "BH", "MV", "CN", "IN", "JP", "KZ"]) {
+  await page.evaluate(() => { window.__geogame.ui.studySel = null; });
+  const got = await tapCode(code);
+  check(got === code, `Азия: тап ${code} -> ${got}`);
+}
+check((await page.textContent("#panel")).includes("Астана"), "карточка: Казахстан — Астана");
+await page.click('#tabbar [data-tab="test"]');
+await page.click('[data-action="start"][data-mode="exam"]');
+{
+  const cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+  await tapCode(cur);
+  const c = await page.evaluate((k) => window.__geogame.BY[k], cur);
+  await page.fill("#capInput", c.capital);
+  await page.press("#capInput", "Enter");
+  check(await page.evaluate(() => window.__geogame.ui.session.okCount) === 1, `Азия, экзамен: ${c.name} — ${c.capital} засчитано`);
+  await page.screenshot({ path: path.join(shots, "16-asia-exam.png") });
+}
+await page.click('[data-action="quit"]');
+const lk = await page.evaluate(() => window.__geogame.BY.LK.capital);
+check(lk.startsWith("Шри"), "у Шри-Ланки есть столица");
+await page.click('[data-action="pickContinent"]');
+await page.click('[data-action="setContinent"][data-cont="europe"]');
+await page.waitForFunction(() => window.__geogame.CONT === "europe" && document.querySelector('#map path[data-code="FR"]'));
+check(await page.evaluate(() => JSON.parse(localStorage.getItem("geogame.v1")).settings.continent) === "europe", "выбор части света сохраняется");
 
 console.log("Service worker и офлайн");
 const swState = await page.evaluate(async () => {

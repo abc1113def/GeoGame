@@ -1,0 +1,71 @@
+{
+  "regions": [
+    { "id": "mideast", "name": "Ближний Восток" },
+    { "id": "central", "name": "Кавказ и Средняя Азия" },
+    { "id": "south", "name": "Южная Азия" },
+    { "id": "east", "name": "Восточная Азия" },
+    { "id": "southeast", "name": "Юго-Восточная Азия" }
+  ],
+  "groups": [
+    { "id": "russia", "name": "Россия" },
+    { "id": "cyprus", "name": "Кипр" },
+    { "id": "palestine", "name": "Палестина" },
+    { "id": "taiwan", "name": "Тайвань" }
+  ],
+  "countries": [
+    { "code": "TR", "name": "Турция", "capital": "Анкара", "region": "mideast" },
+    { "code": "CY", "name": "Кипр", "capital": "Никосия", "region": "mideast", "group": "cyprus" },
+    { "code": "SY", "name": "Сирия", "capital": "Дамаск", "region": "mideast" },
+    { "code": "LB", "name": "Ливан", "capital": "Бейрут", "region": "mideast" },
+    { "code": "IL", "name": "Израиль", "capital": "Иерусалим", "region": "mideast" },
+    { "code": "PS", "name": "Палестина", "capital": "Рамалла", "alt": ["Восточный Иерусалим"], "region": "mideast", "group": "palestine" },
+    { "code": "JO", "name": "Иордания", "capital": "Амман", "region": "mideast" },
+    { "code": "IQ", "name": "Ирак", "capital": "Багдад", "region": "mideast" },
+    { "code": "IR", "name": "Иран", "capital": "Тегеран", "region": "mideast" },
+    { "code": "SA", "name": "Саудовская Аравия", "capital": "Эр-Рияд", "alt": ["Рияд"], "region": "mideast" },
+    { "code": "YE", "name": "Йемен", "capital": "Сана", "region": "mideast" },
+    { "code": "OM", "name": "Оман", "capital": "Маскат", "region": "mideast" },
+    { "code": "AE", "name": "ОАЭ", "capital": "Абу-Даби", "region": "mideast" },
+    { "code": "QA", "name": "Катар", "capital": "Доха", "region": "mideast" },
+    { "code": "BH", "name": "Бахрейн", "capital": "Манама", "region": "mideast", "micro": [50.55, 26.05] },
+    { "code": "KW", "name": "Кувейт", "capital": "Эль-Кувейт", "alt": ["Кувейт"], "region": "mideast" },
+
+    { "code": "GE", "name": "Грузия", "capital": "Тбилиси", "region": "central" },
+    { "code": "AM", "name": "Армения", "capital": "Ереван", "region": "central" },
+    { "code": "AZ", "name": "Азербайджан", "capital": "Баку", "region": "central" },
+    { "code": "KZ", "name": "Казахстан", "capital": "Астана", "region": "central" },
+    { "code": "UZ", "name": "Узбекистан", "capital": "Ташкент", "region": "central" },
+    { "code": "TM", "name": "Туркменистан", "capital": "Ашхабад", "region": "central" },
+    { "code": "KG", "name": "Киргизия", "capital": "Бишкек", "region": "central" },
+    { "code": "TJ", "name": "Таджикистан", "capital": "Душанбе", "region": "central" },
+    { "code": "AF", "name": "Афганистан", "capital": "Кабул", "region": "central" },
+    { "code": "RU", "name": "Россия", "capital": "Москва", "region": "central", "group": "russia" },
+
+    { "code": "PK", "name": "Пакистан", "capital": "Исламабад", "region": "south" },
+    { "code": "IN", "name": "Индия", "capital": "Нью-Дели", "alt": ["Дели"], "region": "south" },
+    { "code": "NP", "name": "Непал", "capital": "Катманду", "region": "south" },
+    { "code": "BT", "name": "Бутан", "capital": "Тхимпху", "region": "south" },
+    { "code": "BD", "name": "Бангладеш", "capital": "Дакка", "alt": ["Дхака"], "region": "south" },
+    { "code": "LK", "name": "Шри-Ланка", "capital": "Шри-Джаяварденепура-Котте", "alt": ["Котте", "Коломбо"], "region": "south" },
+    { "code": "MV", "name": "Мальдивы", "capital": "Мале", "region": "south", "micro": [73.51, 4.17] },
+
+    { "code": "CN", "name": "Китай", "capital": "Пекин", "region": "east" },
+    { "code": "MN", "name": "Монголия", "capital": "Улан-Батор", "region": "east" },
+    { "code": "KP", "name": "КНДР", "capital": "Пхеньян", "region": "east" },
+    { "code": "KR", "name": "Республика Корея", "capital": "Сеул", "region": "east" },
+    { "code": "JP", "name": "Япония", "capital": "Токио", "region": "east" },
+    { "code": "TW", "name": "Тайвань", "capital": "Тайбэй", "alt": ["Тайбей"], "region": "east", "group": "taiwan" },
+
+    { "code": "MM", "name": "Мьянма", "capital": "Нейпьидо", "region": "southeast" },
+    { "code": "TH", "name": "Таиланд", "capital": "Бангкок", "region": "southeast" },
+    { "code": "LA", "name": "Лаос", "capital": "Вьентьян", "region": "southeast" },
+    { "code": "KH", "name": "Камбоджа", "capital": "Пномпень", "region": "southeast" },
+    { "code": "VN", "name": "Вьетнам", "capital": "Ханой", "region": "southeast" },
+    { "code": "MY", "name": "Малайзия", "capital": "Куала-Лумпур", "region": "southeast" },
+    { "code": "SG", "name": "Сингапур", "capital": "Сингапур", "region": "southeast", "micro": [103.82, 1.35] },
+    { "code": "ID", "name": "Индонезия", "capital": "Джакарта", "region": "southeast" },
+    { "code": "PH", "name": "Филиппины", "capital": "Манила", "region": "southeast" },
+    { "code": "BN", "name": "Бруней", "capital": "Бандар-Сери-Бегаван", "region": "southeast" },
+    { "code": "TL", "name": "Восточный Тимор", "capital": "Дили", "region": "southeast" }
+  ]
+}

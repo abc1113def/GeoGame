@@ -1,33 +1,70 @@
-/* Страны Европы — PWA для заучивания положения стран и столиц. */
+/* Страны и столицы — PWA для заучивания положения стран Европы и Азии и их столиц. */
 "use strict";
 
 (() => {
   const STORE_KEY = "geogame.v1";
   const LENGTHS = [10, 20, 30, "all"]; // «all» — каждая страна выбранного региона ровно один раз
-  const MICRO_R = 10;     // радиус видимого маркера микрогосударства, px
-  const MICRO_CORE = 11;  // в этом радиусе (видимый маркер) тап всегда уходит микрогосударству
+  const MICRO_R = 10;     // радиус маркера микрогосударства, px
+  const AUTO_R = 6;       // радиус маркера просто мелкой на текущем масштабе страны
   const MICRO_HIT = 24;   // невидимый круг: срабатывает, если под пальцем море/фон
-  const LABEL_OVERRIDES = { NO: [9.5, 61.6], HR: [16.0, 45.6], RU: [40, 56], GR: [22.0, 39.6], DK: [9.2, 56.1], IT: [14.8, 41.2], CH: [7.7, 46.7] };
+  // Внутри видимого маркера (плюс 1px) тап всегда уходит его стране.
 
+  // Части света. autoMarker — до какого экранного размера (px) мелкие страны получают маркер.
+  const CONTINENTS = {
+    europe: {
+      name: "Европа",
+      data: "data/countries.json",
+      geo: "data/europe.geojson",
+      projection: () => d3.geoConicConformal().parallels([40, 62]).rotate([-14, 0]),
+      focus(g) {
+        const pts = [[-24, 64.5], [-10, 36.5], [-9, 58], [6, 71], [28, 71], [41, 48], [33, 35], [14, 35.5]];
+        if (g.russia) pts.push([46, 58], [44, 66]);
+        if (g.turkey) pts.push([44.5, 37.5], [36, 36]);
+        if (g.caucasus) pts.push([50.5, 40], [46, 43]);
+        return pts;
+      },
+      labels: { NO: [9.5, 61.6], HR: [16.0, 45.6], RU: [40, 56], GR: [22.0, 39.6], DK: [9.2, 56.1], IT: [14.8, 41.2], CH: [7.7, 46.7] },
+      autoMarker: 0,
+    },
+    asia: {
+      name: "Азия",
+      data: "data/asia.json",
+      geo: "data/asia.geojson",
+      projection: () => d3.geoConicConformal().parallels([10, 45]).rotate([-88, 0]),
+      focus(g) {
+        const pts = [[26, 41], [36, 33], [43, 12.5], [59, 22], [73, 0], [81, 6], [95, -11], [126, -10], [141, -3], [146, 44], [135, 48], [120, 53.5], [87, 50], [70, 55.5], [47, 47], [40, 43]];
+        if (g.cyprus) pts.push([32, 35]);
+        if (g.russia) pts.push([30, 60], [80, 74], [140, 72], [179, 66]);
+        return pts;
+      },
+      labels: { RU: [100, 62], VN: [105.9, 21.0], MY: [102.0, 4.0], ID: [113.9, -0.8], TJ: [70.6, 38.7] },
+      autoMarker: 10,
+    },
+  };
+
+  let CONT = "europe";
+  const ALL = {};    // данные стран по частям света
+  const GEO = {};    // загруженные контуры
   let DATA = null;
-  const BY = {};
-  const REGION = {};
+  let BY = {};
+  let REGION = {};
 
   /* ================= Хранилище ================= */
 
   const defaults = () => ({
     settings: {
-      groups: { russia: false, turkey: false, cyprus: false, caucasus: false },
+      continent: "europe",
+      // Регион и дополнительные страны — свои для каждой части света.
+      byCont: Object.fromEntries(Object.keys(CONTINENTS).map((k) => [k, { region: "all", groups: {} }])),
       vibrate: true,
       sound: false,
       showLearned: true,
       sessionLen: 20,
       examInput: "keyboard", // столица в экзамене: keyboard — вписать, voice — назвать вслух и оценить себя
-      region: "all",
     },
     progress: {},
     tick: 0,
-    blitzBest: {}, // рекорды блица: ключ «регион:длина»
+    blitzBest: {}, // рекорды блица: ключ «часть света:регион:длина»
   });
 
   function loadStore() {
@@ -35,14 +72,16 @@
     try {
       const s = JSON.parse(localStorage.getItem(STORE_KEY));
       if (s && typeof s === "object") {
-        return {
-          ...d,
-          ...s,
-          settings: { ...d.settings, ...s.settings, groups: { ...d.settings.groups, ...(s.settings || {}).groups } },
-          progress: s.progress || {},
-          // Старый формат: один рекорд на 20 стран.
-          blitzBest: s.blitzBest && "score" in s.blitzBest ? { "all:20": s.blitzBest } : s.blitzBest || {},
-        };
+        const ss = s.settings || {};
+        const byCont = { ...d.settings.byCont, ...ss.byCont };
+        // Старый формат: регион и группы были общими (только Европа).
+        if (!ss.byCont && (ss.region || ss.groups)) byCont.europe = { region: ss.region || "all", groups: ss.groups || {} };
+        delete ss.region;
+        delete ss.groups;
+        let best = s.blitzBest && "score" in s.blitzBest ? { "all:20": s.blitzBest } : s.blitzBest || {};
+        best = Object.fromEntries(Object.entries(best).map(([k, v]) => [k.split(":").length < 3 ? "europe:" + k : k, v]));
+        if (!CONTINENTS[ss.continent]) ss.continent = "europe";
+        return { ...d, ...s, settings: { ...d.settings, ...ss, byCont }, progress: s.progress || {}, blitzBest: best };
       }
     } catch (e) { /* повреждённые данные — начинаем заново */ }
     return d;
@@ -55,7 +94,8 @@
     box: 1, streak: 0, seen: 0, right: 0, wrong: 0, locWrong: 0, capWrong: 0, learned: false, last: 0,
   });
 
-  const isActive = (c) => !c.group || !!store.settings.groups[c.group];
+  const cs = () => store.settings.byCont[CONT]; // настройки текущей части света
+  const isActive = (c) => !c.group || !!cs().groups[c.group];
   const activeCountries = () => DATA.countries.filter(isActive);
   const inRegion = (c, r) => r === "all" || c.region === r;
   const isLearned = (code) => !!(peek(code) && peek(code).learned);
@@ -167,12 +207,31 @@
     fx: [],
     onTap: () => {},
 
-    init(geo) {
+    init() {
       const svg = d3.select("#map");
       this.svg = svg;
       this.gZoom = svg.append("g");
       this.gMarkers = svg.append("g").attr("class", "markers");
       this.gFx = svg.append("g").attr("class", "fx");
+
+      this.zoom = d3.zoom()
+        .scaleExtent([1, 40])
+        .on("zoom", (ev) => {
+          this.t = ev.transform;
+          this.gZoom.attr("transform", this.t);
+          this.updateOverlay();
+        });
+      svg.call(this.zoom).on("dblclick.zoom", null);
+      this.bindTaps(svg.node());
+      new ResizeObserver(() => this.layout()).observe(svg.node());
+    },
+
+    // Новая часть света: перестраиваем контуры и маркеры.
+    setGeo(geo) {
+      this.clearFx();
+      this.gZoom.selectAll("*").remove();
+      this.gMarkers.selectAll("*").remove();
+      this.conf = CONTINENTS[CONT];
 
       // Фон рисуем первым, чтобы играбельные страны были сверху.
       const feats = geo.features.slice().sort((a, b) => (b.properties.bg || 0) - (a.properties.bg || 0));
@@ -185,22 +244,13 @@
       this.pathEl = {};
       this.paths.each(function (d) { if (d.properties.code) M.pathEl[d.properties.code] = this; });
 
-      this.micro = DATA.countries.filter((c) => c.micro);
-      this.markers = this.gMarkers.selectAll("g").data(this.micro).join("g")
+      // Маркеры: у микрогосударств всегда, у остальных — пока страна мельче conf.autoMarker px.
+      this.markerCountries = DATA.countries.filter((c) => c.micro || this.conf.autoMarker);
+      this.markers = this.gMarkers.selectAll("g").data(this.markerCountries).join("g")
         .attr("class", "marker").attr("data-code", (c) => c.code);
-      this.markers.append("circle").attr("r", MICRO_R);
+      this.markers.append("circle").attr("r", (c) => (c.micro ? MICRO_R : AUTO_R));
+      this.markerHidden = {};
 
-      this.zoom = d3.zoom()
-        .scaleExtent([1, 40])
-        .on("zoom", (ev) => {
-          this.t = ev.transform;
-          this.gZoom.attr("transform", this.t);
-          this.updateOverlay();
-        });
-      svg.call(this.zoom).on("dblclick.zoom", null);
-      this.bindTaps(svg.node());
-
-      new ResizeObserver(() => this.layout()).observe(svg.node());
       this.layout(true);
     },
 
@@ -235,36 +285,32 @@
       const r = this.svg.node().getBoundingClientRect();
       const x = cx - r.left, y = cy - r.top;
       let best = null, bd = Infinity;
-      for (const c of this.micro) {
-        if (!isActive(c) || this.markerHidden[c.code]) continue;
+      let core = 0;
+      for (const c of this.markerCountries) {
+        if (this.markerHidden[c.code] !== false) continue;
         const [mx, my] = this.screenPt(c.code);
         const d = Math.hypot(mx - x, my - y);
-        if (d < bd) { bd = d; best = c.code; }
+        if (d < bd) { bd = d; best = c.code; core = (c.micro ? MICRO_R : AUTO_R) + 1; }
       }
       const hit = document.elementFromPoint(cx, cy);
       const pathEl = hit && hit.closest ? hit.closest("path[data-code]") : null;
       const pathCode = pathEl && !pathEl.classList.contains("off") ? pathEl.dataset.code : null;
-      const pathIsBig = pathCode && !BY[pathCode].micro;
-      if (best && (bd <= MICRO_CORE || (bd <= MICRO_HIT && !pathIsBig))) return this.onTap(best);
+      const pathIsBig = pathCode && this.markerHidden[pathCode] !== false;
+      if (best && (bd <= core || (bd <= MICRO_HIT && !pathIsBig))) return this.onTap(best);
       if (pathCode) this.onTap(pathCode);
     },
 
     focusShape() {
-      const pts = [[-24, 64.5], [-10, 36.5], [-9, 58], [6, 71], [28, 71], [41, 48], [33, 35], [14, 35.5]];
-      const g = store.settings.groups;
-      if (g.russia) pts.push([46, 58], [44, 66]);
-      if (g.turkey) pts.push([44.5, 37.5], [36, 36]);
-      if (g.caucasus) pts.push([50.5, 40], [46, 43]);
-      return { type: "MultiPoint", coordinates: pts };
+      return { type: "MultiPoint", coordinates: this.conf.focus(cs().groups) };
     },
 
     layout(force) {
       const r = this.svg.node().getBoundingClientRect();
       const w = Math.round(r.width), h = Math.round(r.height);
-      if (!w || !h || (!force && w === this.w && h === this.h)) return;
+      if (!this.paths || !w || !h || (!force && w === this.w && h === this.h)) return;
       this.w = w;
       this.h = h;
-      this.projection = d3.geoConicConformal().parallels([40, 62]).rotate([-14, 0])
+      this.projection = this.conf.projection()
         .fitExtent([[8, 8], [w - 8, h - 8]], this.focusShape());
       this.path = d3.geoPath(this.projection);
       this.paths.attr("d", this.path);
@@ -277,7 +323,7 @@
         const g = this.mainGeom[code];
         let pt;
         if (c && c.micro) pt = this.projection(c.micro);
-        else if (LABEL_OVERRIDES[code]) pt = this.projection(LABEL_OVERRIDES[code]);
+        else if (this.conf.labels[code]) pt = this.projection(this.conf.labels[code]);
         else pt = this.path.centroid(g);
         this.label[code] = pt;
         const b = this.path.bounds(g);
@@ -299,7 +345,7 @@
         .attr("transform", (c) => { const [x, y] = this.screenPt(c.code); return `translate(${x},${y})`; })
         .classed("hidden", (c) => {
           // Когда страна сама стала крупной, маркер не нужен.
-          const hide = !isActive(c) || this.size[c.code] * this.t.k > 34;
+          const hide = !isActive(c) || this.size[c.code] * this.t.k > (c.micro ? 34 : this.conf.autoMarker);
           this.markerHidden[c.code] = hide;
           return hide;
         });
@@ -394,8 +440,16 @@
     return list.filter((c) => isLearned(c.code)).length;
   }
 
+  const ICON_CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
+
+  function contPill() {
+    const all = activeCountries();
+    return `<button type="button" class="cont-pill" data-action="pickContinent" aria-label="Часть света: ${esc(CONTINENTS[CONT].name)}">
+      ${esc(CONTINENTS[CONT].name)} <small>${learnedCount(all)}/${all.length}</small>${ICON_CHEVRON}</button>`;
+  }
+
   function regionChips(action) {
-    const cur = store.settings.region;
+    const cur = cs().region;
     const list = [{ id: "all", name: "Все" }, ...DATA.regions];
     return list.map((r) => {
       const cs = activeCountries().filter((c) => inRegion(c, r.id));
@@ -430,7 +484,7 @@
   /* ---------- Изучение ---------- */
 
   function studyPaint() {
-    const r = store.settings.region;
+    const r = cs().region;
     M.paint((code) => {
       const c = BY[code];
       if (code === ui.studySel) return "sel";
@@ -445,7 +499,7 @@
     $("#topbar").innerHTML = `
       <div class="toprow">
         <h1>Карта</h1>
-        <span class="sub">Выучено ${learnedCount(all)}/${all.length}</span>
+        ${contPill()}
         <button type="button" class="iconbtn" data-action="settings" aria-label="Настройки">${ICON_GEAR}</button>
       </div>
       <div class="chips">
@@ -479,11 +533,11 @@
     $("#topbar").innerHTML = `
       <div class="toprow">
         <h1>Тест</h1>
-        <span class="sub">Выучено ${learnedCount(all)}/${all.length}</span>
+        ${contPill()}
         <button type="button" class="iconbtn" data-action="settings" aria-label="Настройки">${ICON_GEAR}</button>
       </div>`;
     const len = store.settings.sessionLen;
-    const regionCount = all.filter((c) => inRegion(c, store.settings.region)).length;
+    const regionCount = all.filter((c) => inRegion(c, cs().region)).length;
     setPage(`
       <div class="card">
         <h3>Регион · ${regionCount} стран</h3>
@@ -512,7 +566,7 @@
   /* ---------- Сессия ---------- */
 
   function startSession(mode, customPool) {
-    const region = store.settings.region;
+    const region = cs().region;
     let pool = customPool || activeCountries().filter((c) => inRegion(c, region)).map((c) => c.code);
     if (!pool.length) { flash("В этом регионе нет стран"); return; }
     const lenSetting = store.settings.sessionLen;
@@ -529,7 +583,7 @@
     ui.session = {
       mode, pool, len, order, custom: !!customPool,
       keyboard: mode === "typing" || (mode === "exam" && store.settings.examInput === "keyboard"),
-      recordKey: mode === "blitz" && !customPool ? `${region}:${lenSetting}` : null,
+      recordKey: mode === "blitz" && !customPool ? `${CONT}:${region}:${lenSetting}` : null,
       i: 0, okCount: 0, history: [], missed: new Set(), results: [],
       started: Date.now(), locRight: 0, capRight: 0, done: false,
     };
@@ -751,6 +805,12 @@
     return levenshtein(a, b) <= allowed ? "close" : "wrong";
   }
 
+  // Учитываем допустимые варианты написания столицы (поле alt).
+  function judgeCountry(typed, c) {
+    const v = [c.capital, ...(c.alt || [])].map((cap) => judgeCapital(typed, cap));
+    return v.includes("exact") ? "exact" : v.includes("close") ? "close" : "wrong";
+  }
+
   function submitTyped(value) {
     const s = ui.session;
     if (!s || !s.keyboard) return;
@@ -758,7 +818,7 @@
     if (s.step !== inputStep(s)) return;
     s.typed = value.trim();
     if (!s.typed) { flash("Впишите столицу или нажмите «Не знаю»"); return; }
-    s.verdict = judgeCapital(s.typed, BY[s.cur].capital);
+    s.verdict = judgeCountry(s.typed, BY[s.cur]);
     gradeTyped(s.verdict !== "wrong");
   }
 
@@ -816,7 +876,7 @@
 
   function renderErrors() {
     const weak = weakList();
-    $("#topbar").innerHTML = `<div class="toprow"><h1>Мои ошибки</h1><span class="sub">${weak.length ? weak.length + " стран" : ""}</span></div>`;
+    $("#topbar").innerHTML = `<div class="toprow"><h1>Ошибки</h1>${contPill()}</div>`;
     setPage(weak.length ? `
       <button type="button" class="btn primary" style="width:100%;margin-bottom:12px" data-action="trainWeak">Тренировать только их (${weak.length})</button>
       <div class="card"><ul class="list">${weak.map((c) => {
@@ -840,14 +900,14 @@
     for (const c of all) { const p = peek(c.code); if (p) { answers += p.seen; right += p.right; } }
     const acc = answers ? Math.round((right / answers) * 100) + "%" : "—";
     const lenSetting = store.settings.sessionLen;
-    const bb = store.blitzBest[`all:${lenSetting}`];
+    const bb = store.blitzBest[`${CONT}:all:${lenSetting}`];
     const best = bb ? `${bb.score}/${bb.of} · ${fmtTime(bb.ms)}` : "—";
     const bestLabel = `рекорд блица, ${lenSetting === "all" ? "все страны" : lenSetting + " стран"}`;
     const hardest = all.filter((c) => peek(c.code) && peek(c.code).wrong > 0)
       .sort((a, b) => { const pa = peek(a.code), pb = peek(b.code); return pb.wrong / pb.seen - pa.wrong / pa.seen || pb.wrong - pa.wrong; })
       .slice(0, 7);
 
-    $("#topbar").innerHTML = `<div class="toprow"><h1>Статистика</h1><button type="button" class="iconbtn" data-action="settings" aria-label="Настройки">${ICON_GEAR}</button></div>`;
+    $("#topbar").innerHTML = `<div class="toprow"><h1>Статистика</h1>${contPill()}<button type="button" class="iconbtn" data-action="settings" aria-label="Настройки">${ICON_GEAR}</button></div>`;
     setPage(`
       <div class="card">
         <div class="big-num">${pct}%</div>
@@ -900,8 +960,8 @@
       <div class="sheet" role="dialog" aria-label="Настройки">
         <div class="toprow"><h2 style="flex:1;margin:0">Настройки</h2><button type="button" class="iconbtn" data-action="closeSheet" aria-label="Закрыть">${ICON_CLOSE}</button></div>
         <div class="card mt">
-          <h3>Дополнительные страны</h3>
-          ${DATA.groups.map((g) => toggleRow("group:" + g.id, g.name, "", !!st.groups[g.id])).join("")}
+          <h3>Дополнительные страны · ${esc(CONTINENTS[CONT].name)}</h3>
+          ${DATA.groups.map((g) => toggleRow("group:" + g.id, g.name, "", !!cs().groups[g.id])).join("")}
         </div>
         <div class="card">
           <h3>Поведение</h3>
@@ -913,6 +973,46 @@
         <p class="muted center-text mt" style="font-size:12px">Карта: Natural Earth (общественное достояние). Прогресс хранится только на этом устройстве.</p>
       </div>`;
     sheet.hidden = false;
+  }
+
+  function openContinents() {
+    const sheet = $("#sheet");
+    sheet.className = "overlay";
+    sheet.innerHTML = `
+      <div class="sheet" role="dialog" aria-label="Часть света">
+        <div class="toprow"><h2 style="flex:1;margin:0">Часть света</h2><button type="button" class="iconbtn" data-action="closeSheet" aria-label="Закрыть">${ICON_CLOSE}</button></div>
+        ${Object.entries(CONTINENTS).map(([key, conf]) => {
+          const list = ALL[key].countries.filter((c) => !c.group || store.settings.byCont[key].groups[c.group]);
+          const learned = list.filter((c) => isLearned(c.code)).length;
+          return `<button type="button" class="mode ${key === CONT ? "main" : ""}" data-action="setContinent" data-cont="${key}">
+            <span class="ico" aria-hidden="true">${key === "europe" ? "🏰" : "🏯"}</span>
+            <span class="grow"><b>${esc(conf.name)}</b><span>${list.length} стран · выучено ${learned}</span></span></button>`;
+        }).join("")}
+        <p class="muted center-text" style="font-size:13px">Прогресс по странам общий: Турция или Кипр, выученные в одной части света, считаются выученными и в другой.</p>
+      </div>`;
+    sheet.hidden = false;
+  }
+
+  function useData(key) {
+    CONT = key;
+    DATA = ALL[key];
+    BY = {};
+    REGION = {};
+    for (const c of DATA.countries) BY[c.code] = c;
+    for (const r of DATA.regions) REGION[r.id] = r.name;
+  }
+
+  async function switchContinent(key) {
+    if (!CONTINENTS[key]) return;
+    GEO[key] ||= await fetch(CONTINENTS[key].geo).then((r) => r.json());
+    if (ui.session) { clearTimeout(ui.session.timer); ui.session = null; }
+    ui.studySel = null;
+    store.settings.continent = key;
+    save();
+    useData(key);
+    M.setGeo(GEO[key]);
+    updateBadge();
+    render();
   }
 
   function closeSheet() {
@@ -959,6 +1059,11 @@
       render();
     },
     settings: openSettings,
+    pickContinent: openContinents,
+    setContinent(el) {
+      closeSheet();
+      if (el.dataset.cont !== CONT) switchContinent(el.dataset.cont).catch((e) => flash("Не удалось загрузить карту: " + e.message, "bad"));
+    },
     closeSheet,
     confirmOk() { const fn = confirmDialog.onOk; closeSheet(); if (fn) fn(); },
     setting(el) {
@@ -966,7 +1071,7 @@
       const st = store.settings;
       if (key.startsWith("group:")) {
         const g = key.slice(6);
-        st.groups[g] = !st.groups[g];
+        cs().groups[g] = !cs().groups[g];
         if (ui.studySel && !isActive(BY[ui.studySel])) ui.studySel = null;
         save();
         M.layout(true);
@@ -975,7 +1080,7 @@
         st[key] = !st[key];
         save();
       }
-      el.setAttribute("aria-checked", key.startsWith("group:") ? st.groups[key.slice(6)] : st[key]);
+      el.setAttribute("aria-checked", key.startsWith("group:") ? !!cs().groups[key.slice(6)] : st[key]);
       updateBadge();
       render();
     },
@@ -991,15 +1096,15 @@
       });
     },
     studyRegion(el) {
-      store.settings.region = el.dataset.region;
+      cs().region = el.dataset.region;
       save();
       ui.studySel = null;
-      const r = store.settings.region;
+      const r = cs().region;
       if (r === "all") M.reset();
       else M.zoomTo(activeCountries().filter((c) => c.region === r).map((c) => c.code), { maxK: 5 });
       render();
     },
-    testRegion(el) { store.settings.region = el.dataset.region; save(); render(); },
+    testRegion(el) { cs().region = el.dataset.region; save(); render(); },
     toggleShowLearned() { store.settings.showLearned = !store.settings.showLearned; save(); render(); },
     toggleLearned() {
       const code = ui.studySel;
@@ -1084,7 +1189,7 @@
       const code = el.dataset.code;
       ui.tab = "map";
       ui.studySel = code;
-      if (!inRegion(BY[code], store.settings.region)) store.settings.region = "all";
+      if (!inRegion(BY[code], cs().region)) cs().region = "all";
       render();
       M.zoomTo([code], { maxK: 6, minSize: 140 });
     },
@@ -1129,13 +1234,13 @@
     document.addEventListener("gesturestart", (e) => e.preventDefault());
     document.addEventListener("dblclick", (e) => e.preventDefault());
 
-    const [countries, geo] = await Promise.all([
-      fetch("data/countries.json").then((r) => r.json()),
-      fetch("data/europe.geojson").then((r) => r.json()),
-    ]);
-    DATA = countries;
-    for (const c of DATA.countries) BY[c.code] = c;
-    for (const r of DATA.regions) REGION[r.id] = r.name;
+    // Списки стран маленькие — грузим все сразу, контуры — только нужной части света.
+    const keys = Object.keys(CONTINENTS);
+    const lists = await Promise.all(keys.map((k) => fetch(CONTINENTS[k].data).then((r) => r.json())));
+    keys.forEach((k, i) => { ALL[k] = lists[i]; });
+    const start = store.settings.continent;
+    GEO[start] = await fetch(CONTINENTS[start].geo).then((r) => r.json());
+    useData(start);
 
     M.onTap = (code) => {
       if (ui.tab === "map") {
@@ -1145,7 +1250,8 @@
         onSessionTap(code);
       }
     };
-    M.init(geo);
+    M.init();
+    M.setGeo(GEO[start]);
     // Карта перестраивается при смене размера (поворот, клавиатура) — снова показываем загаданную страну.
     M.afterLayout = () => {
       const s = ui.session;
@@ -1157,7 +1263,7 @@
     render();
 
     // Тестовый крючок для автопроверки.
-    window.__geogame = { M, ui, store: () => store, actions, BY };
+    window.__geogame = { M, ui, store: () => store, actions, switchContinent, get BY() { return BY; }, get CONT() { return CONT; } };
   }
 
   boot().catch((err) => {

@@ -1,4 +1,4 @@
-// Строит data/europe.geojson из Natural Earth (пакет world-atlas).
+// Строит data/europe.geojson и data/asia.geojson из Natural Earth (пакет world-atlas).
 // Играбельные страны берутся из 50m (детальнее), фон — из 110m (легче).
 // Запуск: cd tools && npm i && node build-geo.mjs
 import fs from "node:fs";
@@ -12,8 +12,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const load = (f) => JSON.parse(fs.readFileSync(path.join(here, "node_modules/world-atlas", f), "utf8"));
 
-// Названия Natural Earth -> код в countries.json. Несколько названий на один код = слияние.
-const NAME_TO_CODE = {
+// Названия Natural Earth -> код страны. Несколько названий на один код = слияние.
+const EUROPE = {
   Iceland: "IS", Norway: "NO", Sweden: "SE", Finland: "FI", Åland: "FI", Denmark: "DK",
   Estonia: "EE", Latvia: "LV", Lithuania: "LT",
   "United Kingdom": "GB", "Isle of Man": "GB", Jersey: "GB", Guernsey: "GB",
@@ -29,9 +29,25 @@ const NAME_TO_CODE = {
   Georgia: "GE", Armenia: "AM", Azerbaijan: "AZ",
 };
 
+const ASIA = {
+  Turkey: "TR", Cyprus: "CY", "N. Cyprus": "CY", Syria: "SY", Lebanon: "LB", Israel: "IL", Palestine: "PS",
+  Jordan: "JO", Iraq: "IQ", Iran: "IR", "Saudi Arabia": "SA", Yemen: "YE", Oman: "OM",
+  "United Arab Emirates": "AE", Qatar: "QA", Bahrain: "BH", Kuwait: "KW",
+  Georgia: "GE", Armenia: "AM", Azerbaijan: "AZ", Kazakhstan: "KZ", Uzbekistan: "UZ", Turkmenistan: "TM",
+  Kyrgyzstan: "KG", Tajikistan: "TJ", Afghanistan: "AF", Russia: "RU",
+  Pakistan: "PK", India: "IN", Nepal: "NP", Bhutan: "BT", Bangladesh: "BD", "Sri Lanka": "LK", Maldives: "MV",
+  China: "CN", "Hong Kong": "CN", Macao: "CN", Mongolia: "MN", "North Korea": "KP", "South Korea": "KR",
+  Japan: "JP", Taiwan: "TW",
+  Myanmar: "MM", Thailand: "TH", Laos: "LA", Cambodia: "KH", Vietnam: "VN", Malaysia: "MY", Singapore: "SG",
+  Indonesia: "ID", Philippines: "PH", Brunei: "BN", "Timor-Leste": "TL",
+};
+
 // Рамка обрезки в градусах: [запад, юг, восток, север].
-const BOX = [-60, 18, 75, 84];
-const clipper = geoIdentity().reflectY(true).clipExtent([[BOX[0], -BOX[3]], [BOX[2], -BOX[1]]]);
+const CONTINENTS = [
+  { out: "europe.geojson", data: "countries.json", names: EUROPE, box: [-60, 18, 75, 84] },
+  { out: "asia.geojson", data: "asia.json", names: ASIA, box: [5, -20, 180, 82] },
+];
+let clipper;
 
 function round(geom, digits) {
   const k = 10 ** digits;
@@ -78,32 +94,36 @@ function clip(geometry, digits) {
 const detailed = load("countries-50m.json");
 const coarse = load("countries-110m.json");
 
-// Играбельные: сливаем по коду средствами topojson.merge (общие границы исчезают).
-const byCode = {};
-for (const g of detailed.objects.countries.geometries) {
-  const code = NAME_TO_CODE[g.properties.name];
-  if (code) (byCode[code] ||= []).push(g);
-}
-const features = [];
-for (const [code, geoms] of Object.entries(byCode)) {
-  const merged = geoms.length > 1 ? topojson.merge(detailed, geoms) : topojson.feature(detailed, geoms[0]).geometry;
-  const g = clip(merged, 3);
-  if (!g) throw new Error("Пустая геометрия: " + code);
-  features.push({ type: "Feature", properties: { code }, geometry: g });
-}
+for (const { out: outFile, data, names, box } of CONTINENTS) {
+  clipper = geoIdentity().reflectY(true).clipExtent([[box[0], -box[3]], [box[2], -box[1]]]);
 
-// Фон: всё остальное, что попадает в рамку, грубее и без кодов.
-const playableNames = new Set(Object.keys(NAME_TO_CODE));
-for (const g of coarse.objects.countries.geometries) {
-  if (playableNames.has(g.properties.name)) continue;
-  const geom = clip(topojson.feature(coarse, g).geometry, 2);
-  if (geom) features.push({ type: "Feature", properties: { bg: 1 }, geometry: geom });
+  // Играбельные: сливаем по коду средствами topojson.merge (общие границы исчезают).
+  const byCode = {};
+  for (const g of detailed.objects.countries.geometries) {
+    const code = names[g.properties.name];
+    if (code) (byCode[code] ||= []).push(g);
+  }
+  const features = [];
+  for (const [code, geoms] of Object.entries(byCode)) {
+    const merged = geoms.length > 1 ? topojson.merge(detailed, geoms) : topojson.feature(detailed, geoms[0]).geometry;
+    const g = clip(merged, 3);
+    if (!g) throw new Error("Пустая геометрия: " + code);
+    features.push({ type: "Feature", properties: { code }, geometry: g });
+  }
+
+  // Фон: всё остальное, что попадает в рамку, грубее и без кодов.
+  const playableNames = new Set(Object.keys(names));
+  for (const g of coarse.objects.countries.geometries) {
+    if (playableNames.has(g.properties.name)) continue;
+    const geom = clip(topojson.feature(coarse, g).geometry, 2);
+    if (geom) features.push({ type: "Feature", properties: { bg: 1 }, geometry: geom });
+  }
+
+  const countries = JSON.parse(fs.readFileSync(path.join(root, "data", data), "utf8")).countries;
+  const missing = countries.filter((c) => !byCode[c.code]).map((c) => c.code);
+  if (missing.length) throw new Error("Нет на карте: " + missing.join(", "));
+
+  const out = { type: "FeatureCollection", features };
+  fs.writeFileSync(path.join(root, "data", outFile), JSON.stringify(out));
+  console.log(`${outFile}: ${features.length} объектов, ${(JSON.stringify(out).length / 1024).toFixed(0)} КБ`);
 }
-
-const countries = JSON.parse(fs.readFileSync(path.join(root, "data/countries.json"), "utf8")).countries;
-const missing = countries.filter((c) => !byCode[c.code]).map((c) => c.code);
-if (missing.length) throw new Error("Нет на карте: " + missing.join(", "));
-
-const out = { type: "FeatureCollection", features };
-fs.writeFileSync(path.join(root, "data/europe.geojson"), JSON.stringify(out));
-console.log(`europe.geojson: ${features.length} объектов, ${(JSON.stringify(out).length / 1024).toFixed(0)} КБ`);
