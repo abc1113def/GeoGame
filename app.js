@@ -279,6 +279,7 @@
       this.zoom.extent([[0, 0], [w, h]]).translateExtent([[-w * 0.5, -h * 0.5], [w * 1.5, h * 1.5]]);
       this.svg.call(this.zoom.transform, d3.zoomIdentity);
       this.updateOverlay();
+      if (this.afterLayout) this.afterLayout();
     },
 
     screenPt(code) { return this.t.apply(this.label[code]); },
@@ -372,10 +373,12 @@
   /* ================= Интерфейс ================= */
 
   const ui = { tab: "map", studySel: null, session: null, lastSession: null };
+  const showsTarget = (mode) => mode === "reverse" || mode === "capitals" || mode === "typing";
   const MODES = {
     exam: { title: "Тест «как на экзамене»", desc: "Найдите страну на карте и назовите столицу вслух", ico: "🎯" },
     reverse: { title: "Обратный режим", desc: "Страна подсвечена — вспомните название и столицу", ico: "🔁" },
     capitals: { title: "Только столицы", desc: "Выберите столицу из 4 вариантов", ico: "🏛️" },
+    typing: { title: "Столица с клавиатуры", desc: "Впишите столицу сами, мелкие опечатки прощаются", ico: "⌨️" },
     blitz: { title: `Блиц · ${BLITZ_N} стран`, desc: "На время: место на карте + столица", ico: "⚡" },
   };
 
@@ -512,6 +515,8 @@
       started: Date.now(), locRight: 0, capRight: 0, done: false,
     };
     ui.lastSession = { mode, customPool };
+    clearTimeout(flashTimer);
+    $("#flash").className = "";
     ui.tab = "test";
     M.reset(0);
     nextQuestion();
@@ -524,16 +529,19 @@
     if (s.i >= s.len) return finishSession();
     s.cur = s.mode === "blitz" ? s.pool[s.i] : pickWeighted(s.pool, s);
     s.history.push(s.cur);
-    Object.assign(s, { step: "ask", hinted: false, tapped: null, locOk: null, choice: null, options: null });
+    Object.assign(s, { step: "ask", hinted: false, tapped: null, locOk: null, choice: null, options: null, typed: "", verdict: null });
     M.clearFx();
     if (s.mode === "capitals" || s.mode === "blitz") s.options = capitalOptions(s.cur);
-    if (s.mode === "reverse" || s.mode === "capitals") {
-      const c = s.cur;
-      if (BY[c].micro || M.size[c] < 40) M.zoomTo([c], { maxK: 6, minSize: 110 });
-      else if (!M.visible(c, 40)) M.reset();
-      M.pulse(c, "blue");
+    if (showsTarget(s.mode)) {
+      focusTarget(s.cur);
+      M.pulse(s.cur, "blue");
     }
     render();
+  }
+
+  function focusTarget(c, duration = 550) {
+    if (BY[c].micro || M.size[c] < 40) M.zoomTo([c], { maxK: 6, minSize: 110, duration });
+    else if (!M.visible(c, 40)) M.reset(duration);
   }
 
   function capitalOptions(code) {
@@ -552,7 +560,8 @@
   function sessionPaint() {
     const s = ui.session;
     M.paint((code) => {
-      if (s.mode === "reverse" || s.mode === "capitals") return code === s.cur ? (s.step === "ask" ? "target" : s.locOk === false ? "bad" : "ok") : "";
+      if (s.mode === "typing") return code === s.cur ? (s.step === "ask" ? "target" : s.verdict === "wrong" ? "bad" : "ok") : "";
+      if (showsTarget(s.mode)) return code === s.cur ? (s.step === "ask" ? "target" : s.locOk === false ? "bad" : "ok") : "";
       if (s.tapped == null) return "";
       if (code === s.cur) return "ok";
       if (code === s.tapped) return "bad";
@@ -620,6 +629,23 @@
             <button type="button" class="btn bad" data-action="selfGrade" data-ok="0">Не знал(а) ❌</button>
           </div>`;
       }
+    } else if (s.mode === "typing") {
+      let status;
+      if (s.step === "ask") status = s.hinted ? `<span class="hint-text">Столица на «${esc(c.capital[0])}»</span>` : "Страна подсвечена на карте";
+      else if (s.verdict === "exact") status = `<span class="okc">✅ Верно: ${esc(c.capital)}</span>`;
+      else if (s.verdict === "close") status = `<span class="okc">✅ Почти, пишется «${esc(c.capital)}»</span>`;
+      else status = `<span class="badc">❌ Правильно: ${esc(c.capital)}</span>`;
+      const done = s.step !== "ask";
+      html = `<div class="prompt-label">${status}</div>
+        <div class="prompt">${esc(c.name)}</div>
+        <form id="capForm" class="row" autocomplete="off">
+          <input id="capInput" class="text-input ${done ? (s.verdict === "wrong" ? "wrong" : "right") : ""}" type="text" inputmode="text"
+            placeholder="Столица…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
+            enterkeyhint="${done ? "next" : "done"}" value="${esc(s.typed)}" ${done ? "readonly" : ""} aria-label="Столица страны ${esc(c.name)}">
+          <button type="submit" class="btn primary small">${done ? "Дальше" : "Проверить"}</button>
+        </form>
+        <div class="row">${done ? "" : `${s.hinted ? "" : `<button type="button" class="btn ghost small" data-action="hint">💡 Первая буква</button>`}
+          <span class="grow"></span><button type="button" class="btn ghost small" data-action="giveUp">Не знаю</button>`}</div>`;
     } else if (s.mode === "capitals" || (s.mode === "blitz" && s.step !== "ask")) {
       html = `<div class="prompt-label">${s.mode === "blitz" ? (s.locOk ? "✅ Место верно · столица?" : "❌ Место — ошибка · столица?") : "Столица страны"}</div>
         <div class="prompt">${esc(c.name)}</div>
@@ -635,6 +661,9 @@
         <div class="meta">Нажмите на страну 👆 Затем выберите столицу.</div>`;
     }
     $("#panel").innerHTML = html;
+    // Фокус ставится синхронно в обработчике нажатия, поэтому клавиатура iOS не закрывается между вопросами.
+    const input = $("#capInput");
+    if (input && document.activeElement !== input) input.focus({ preventScroll: true });
     sessionPaint();
     if (s.mode === "blitz") startTimer();
   }
@@ -654,6 +683,43 @@
       M.ensureVisible([s.cur, code]);
     }
     s.step = s.mode === "blitz" ? "cap" : "located";
+    render();
+  }
+
+  const normCap = (v) => v.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я]/g, "");
+
+  function levenshtein(a, b) {
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  // exact — совпало (без учёта регистра, ё/е, дефисов и пробелов), close — опечатка, wrong — неверно.
+  function judgeCapital(typed, capital) {
+    const a = normCap(typed), b = normCap(capital);
+    if (!a) return "wrong";
+    if (a === b) return "exact";
+    const allowed = b.length >= 9 ? 2 : b.length >= 5 ? 1 : 0;
+    return levenshtein(a, b) <= allowed ? "close" : "wrong";
+  }
+
+  function submitTyped(value) {
+    const s = ui.session;
+    if (!s || s.mode !== "typing") return;
+    if (s.step !== "ask") return nextQuestion();
+    s.typed = value.trim();
+    if (!s.typed) { flash("Впишите столицу или нажмите «Не знаю»"); return; }
+    s.verdict = judgeCapital(s.typed, BY[s.cur].capital);
+    const ok = s.verdict !== "wrong";
+    finishQuestion(ok, { cap: ok });
+    buzz(ok ? "ok" : "bad");
+    s.step = "checked";
     render();
   }
 
@@ -845,7 +911,7 @@
       if (ui.tab === "test" && ui.session && !ui.session.done) {
         // Возврат в идущую сессию: восстановить пульс.
         const s = ui.session;
-        if (s.mode === "reverse" || s.mode === "capitals") M.pulse(s.cur, "blue");
+        if (showsTarget(s.mode)) M.pulse(s.cur, "blue");
         else if (s.tapped && !s.locOk) M.pulse(s.cur);
       }
       render();
@@ -947,6 +1013,16 @@
       if (!knew) buzz("bad");
       nextQuestion();
     },
+    giveUp() {
+      const s = ui.session;
+      if (!s || s.mode !== "typing" || s.step !== "ask") return;
+      s.typed = "";
+      s.verdict = "wrong";
+      finishQuestion(false, { cap: false });
+      buzz("bad");
+      s.step = "checked";
+      render();
+    },
     choose(el) {
       const s = ui.session;
       if (!s || s.choice != null) return;
@@ -974,6 +1050,21 @@
     },
   };
 
+  // iOS: при открытой клавиатуре подгоняем приложение под видимую область, чтобы поле ввода не пряталось.
+  function watchKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const app = $("#app");
+    const update = () => {
+      const open = vv.height < window.innerHeight - 120;
+      document.documentElement.classList.toggle("kb-open", open);
+      app.style.height = open ? vv.height + "px" : "";
+      app.style.transform = open && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+  }
+
   /* ================= Запуск ================= */
 
   async function boot() {
@@ -988,6 +1079,12 @@
       if (fn) fn(el);
     });
     $("#resetView").addEventListener("click", () => M.reset());
+    document.addEventListener("submit", (e) => {
+      if (e.target.id !== "capForm") return;
+      e.preventDefault();
+      submitTyped($("#capInput").value);
+    });
+    watchKeyboard();
     // iOS: запрещаем масштабирование страницы жестами, кроме самой карты.
     document.addEventListener("gesturestart", (e) => e.preventDefault());
     document.addEventListener("dblclick", (e) => e.preventDefault());
@@ -1009,6 +1106,11 @@
       }
     };
     M.init(geo);
+    // Карта перестраивается при смене размера (поворот, клавиатура) — снова показываем загаданную страну.
+    M.afterLayout = () => {
+      const s = ui.session;
+      if (ui.tab === "test" && s && !s.done && showsTarget(s.mode)) focusTarget(s.cur, 0);
+    };
     updateBadge();
     render();
 

@@ -369,6 +369,33 @@ svg { display: block; }
 .btn.bad { background: var(--bad); color: #fff; }
 .btn.ghost { background: transparent; color: var(--accent); }
 .btn.small { min-height: 44px; font-size: 15px; flex: none; }
+.text-input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 18px; /* не меньше 16px, иначе iOS масштабирует страницу при фокусе */
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+.text-input:focus { border-color: var(--accent); }
+.text-input.right { border-color: var(--ok); }
+.text-input.wrong { border-color: var(--bad); color: var(--bad); text-decoration: line-through; }
+.text-input::placeholder { color: var(--muted); }
+#capForm .btn { flex: none; }
+.prompt-label .okc { color: var(--ok); font-weight: 600; }
+.prompt-label .badc { color: var(--bad); font-weight: 600; }
+/* Клавиатура открыта: прячем нижнюю навигацию, карта сжимается. */
+.kb-open #tabbar { display: none; }
+.kb-open #topbar { padding-top: 6px; }
 .btn.opt { font-weight: 500; font-size: 15px; padding: 0 8px; }
 .btn.opt.right { background: var(--ok); color: #fff; }
 .btn.opt.wrong { background: var(--bad); color: #fff; }

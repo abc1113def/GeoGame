@@ -133,6 +133,36 @@ for (const mode of ["reverse", "capitals", "blitz"]) {
   await page.click('[data-action="quit"]');
 }
 
+console.log("Столица с клавиатуры");
+await page.click('[data-action="start"][data-mode="typing"]');
+check(await page.evaluate(() => document.activeElement && document.activeElement.id === "capInput"), "поле ввода в фокусе");
+let cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+let cap = await page.evaluate((c) => window.__geogame.BY[c].capital, cur);
+await page.fill("#capInput", cap.toUpperCase().replace(/ё/g, "Е"));
+await page.press("#capInput", "Enter");
+check(await page.evaluate(() => window.__geogame.ui.session.verdict) === "exact", `точный ответ «${cap}» без учёта регистра и ё`);
+await page.screenshot({ path: path.join(shots, "11-typing-ok.png") });
+await page.press("#capInput", "Enter");
+await page.waitForFunction(() => window.__geogame.ui.session.step === "ask");
+cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+cap = await page.evaluate((c) => window.__geogame.BY[c].capital, cur);
+const typo = cap.length >= 5 ? cap.slice(0, -2) + cap.slice(-1) : cap;
+await page.fill("#capInput", typo);
+await page.click('#capForm button[type="submit"]');
+const v = await page.evaluate(() => window.__geogame.ui.session.verdict);
+check(v === (cap.length >= 5 ? "close" : "exact"), `опечатка «${typo}» для «${cap}» засчитана (${v})`);
+await page.click('#capForm button[type="submit"]');
+await page.waitForFunction(() => window.__geogame.ui.session.step === "ask");
+await page.fill("#capInput", "Нью-Йорк");
+await page.press("#capInput", "Enter");
+check(await page.evaluate(() => window.__geogame.ui.session.verdict) === "wrong", "неверный ответ отклонён");
+await page.screenshot({ path: path.join(shots, "12-typing-wrong.png") });
+await page.press("#capInput", "Enter");
+await page.click('[data-action="giveUp"]');
+check(await page.evaluate(() => window.__geogame.ui.session.verdict) === "wrong", "«Не знаю» засчитано как ошибка");
+check(await page.evaluate(() => window.__geogame.ui.session.okCount) === 2, "счётчик: 2 верных из 4");
+await page.click('[data-action="quit"]');
+
 console.log("Ошибки и статистика");
 await page.click('#tabbar [data-tab="errors"]');
 check(await page.$('[data-action="trainWeak"]') !== null, "есть кнопка «Тренировать только их»");
