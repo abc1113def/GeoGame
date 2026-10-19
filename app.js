@@ -22,6 +22,7 @@
       sound: false,
       showLearned: true,
       sessionLen: 20,
+      examInput: "keyboard", // столица в экзамене: keyboard — вписать, voice — назвать вслух и оценить себя
       region: "all",
     },
     progress: {},
@@ -223,6 +224,11 @@
       };
       el.addEventListener("pointerup", (e) => end(e, false));
       el.addEventListener("pointercancel", (e) => end(e, true));
+      // Тап по карте открывает поле ввода столицы; не даём следующим за тапом
+      // мышиным событиям сразу же снять с него фокус (и закрыть клавиатуру).
+      const keepInput = (e) => { if (document.activeElement && document.activeElement.id === "capInput") e.preventDefault(); };
+      el.addEventListener("touchend", keepInput, { passive: false });
+      el.addEventListener("mousedown", keepInput);
     },
 
     tapAt(cx, cy) {
@@ -377,7 +383,7 @@
   const ui = { tab: "map", studySel: null, session: null, lastSession: null };
   const showsTarget = (mode) => mode === "reverse" || mode === "capitals" || mode === "typing";
   const MODES = {
-    exam: { title: "Тест «как на экзамене»", desc: "Найдите страну на карте и назовите столицу вслух", ico: "🎯" },
+    exam: { title: "Тест «как на экзамене»", desc: "Найдите страну на карте, затем столица", ico: "🎯" },
     reverse: { title: "Обратный режим", desc: "Страна подсвечена — вспомните название и столицу", ico: "🔁" },
     capitals: { title: "Только столицы", desc: "Выберите столицу из 4 вариантов", ico: "🏛️" },
     typing: { title: "Столица с клавиатуры", desc: "Впишите столицу сами, мелкие опечатки прощаются", ico: "⌨️" },
@@ -490,6 +496,11 @@
           ? "Каждая страна региона спрашивается один раз, в случайном порядке."
           : "Чаще спрашиваются новые и ошибочные страны, реже — выученные. В блице страны не повторяются."}</p>
       </div>
+      <div class="card">
+        <h3>Столица в экзамене</h3>
+        <div class="seg">${[["keyboard", "⌨️ Вписать"], ["voice", "🗣️ Вслух"]].map(([v, t]) =>
+          `<button type="button" data-action="examInput" data-v="${v}" aria-pressed="${store.settings.examInput === v}">${t}</button>`).join("")}</div>
+      </div>
       ${Object.entries(MODES).map(([id, m]) => `
         <button type="button" class="mode ${id === "exam" ? "main" : ""}" data-action="start" data-mode="${id}">
           <span class="ico" aria-hidden="true">${m.ico}</span>
@@ -517,6 +528,7 @@
     }
     ui.session = {
       mode, pool, len, order, custom: !!customPool,
+      keyboard: mode === "typing" || (mode === "exam" && store.settings.examInput === "keyboard"),
       recordKey: mode === "blitz" && !customPool ? `${region}:${lenSetting}` : null,
       i: 0, okCount: 0, history: [], missed: new Set(), results: [],
       started: Date.now(), locRight: 0, capRight: 0, done: false,
@@ -598,9 +610,11 @@
       : `<button type="button" class="btn ghost small" data-action="hint">💡 Первая буква</button>`;
     let html = "";
 
-    if (s.mode === "exam") {
+    if ((s.keyboard && s.step !== "ask") || s.mode === "typing") {
+      html = capInputPanel(s, c);
+    } else if (s.mode === "exam") {
       if (s.step === "ask") {
-        html = `<div class="prompt-label">Покажите на карте и назовите столицу</div>
+        html = `<div class="prompt-label">${s.keyboard ? "Покажите на карте, затем впишите столицу" : "Покажите на карте и назовите столицу"}</div>
           <div class="prompt">${esc(c.name)}</div>
           <div class="spacer"></div>
           <div class="row"><span class="meta grow">Нажмите на страну 👆</span>${hint}</div>`;
@@ -636,23 +650,6 @@
             <button type="button" class="btn bad" data-action="selfGrade" data-ok="0">Не знал(а) ❌</button>
           </div>`;
       }
-    } else if (s.mode === "typing") {
-      let status;
-      if (s.step === "ask") status = s.hinted ? `<span class="hint-text">Столица на «${esc(c.capital[0])}»</span>` : "Страна подсвечена на карте";
-      else if (s.verdict === "exact") status = `<span class="okc">✅ Верно: ${esc(c.capital)}</span>`;
-      else if (s.verdict === "close") status = `<span class="okc">✅ Почти, пишется «${esc(c.capital)}»</span>`;
-      else status = `<span class="badc">❌ Правильно: ${esc(c.capital)}</span>`;
-      const done = s.step !== "ask";
-      html = `<div class="prompt-label">${status}</div>
-        <div class="prompt">${esc(c.name)}</div>
-        <form id="capForm" class="row" autocomplete="off">
-          <input id="capInput" class="text-input ${done ? (s.verdict === "wrong" ? "wrong" : "right") : ""}" type="text" inputmode="text"
-            placeholder="Столица…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
-            enterkeyhint="${done ? "next" : "done"}" value="${esc(s.typed)}" ${done ? "readonly" : ""} aria-label="Столица страны ${esc(c.name)}">
-          <button type="submit" class="btn primary small">${done ? "Дальше" : "Проверить"}</button>
-        </form>
-        <div class="row">${done ? "" : `${s.hinted ? "" : `<button type="button" class="btn ghost small" data-action="hint">💡 Первая буква</button>`}
-          <span class="grow"></span><button type="button" class="btn ghost small" data-action="giveUp">Не знаю</button>`}</div>`;
     } else if (s.mode === "capitals" || (s.mode === "blitz" && s.step !== "ask")) {
       html = `<div class="prompt-label">${s.mode === "blitz" ? (s.locOk ? "✅ Место верно · столица?" : "❌ Место — ошибка · столица?") : "Столица страны"}</div>
         <div class="prompt">${esc(c.name)}</div>
@@ -693,6 +690,44 @@
     render();
   }
 
+  // Ввод столицы с клавиатуры: режим «Столица с клавиатуры» и экзамен после тапа по карте.
+  function capInputPanel(s, c) {
+    const done = s.step === "checked";
+    let status;
+    if (!done) {
+      if (s.mode === "typing") status = "Страна подсвечена на карте";
+      else status = s.locOk ? `<span class="okc">✅ Место верно</span> · впишите столицу` : `<span class="badc">❌ Вы нажали: ${esc(BY[s.tapped].name)}</span> · впишите столицу`;
+    } else {
+      const loc = s.mode === "exam" ? (s.locOk ? `<span class="okc">Место ✅</span> · ` : `<span class="badc">Место ❌</span> · `) : "";
+      if (s.verdict === "exact") status = loc + `<span class="okc">✅ ${esc(c.capital)}</span>`;
+      else if (s.verdict === "close") status = loc + `<span class="okc">✅ Почти, пишется «${esc(c.capital)}»</span>`;
+      else status = loc + `<span class="badc">❌ Правильно: ${esc(c.capital)}</span>`;
+    }
+    const hint = s.hinted
+      ? `<span class="hint-text">Столица на «${esc(c.capital[0])}»</span>`
+      : `<button type="button" class="btn ghost small" data-action="hint">💡 Первая буква</button>`;
+    return `<div class="prompt-label">${status}</div>
+      <div class="prompt">${esc(c.name)}</div>
+      <form id="capForm" class="row" autocomplete="off">
+        <input id="capInput" class="text-input ${done ? (s.verdict === "wrong" ? "wrong" : "right") : ""}" type="text" inputmode="text"
+          placeholder="Столица…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
+          enterkeyhint="${done ? "next" : "done"}" value="${esc(s.typed)}" ${done ? "readonly" : ""} aria-label="Столица страны ${esc(c.name)}">
+        <button type="submit" class="btn primary small">${done ? "Дальше" : "Проверить"}</button>
+      </form>
+      <div class="row">${done ? "" : `${hint}<span class="grow"></span><button type="button" class="btn ghost small" data-action="giveUp">Не знаю</button>`}</div>`;
+  }
+
+  const inputStep = (s) => (s.mode === "typing" ? "ask" : "located");
+
+  function gradeTyped(ok) {
+    const s = ui.session;
+    if (s.mode === "exam") finishQuestion(s.locOk && ok, { loc: s.locOk, cap: ok, full: true, hinted: s.hinted });
+    else finishQuestion(ok, { cap: ok });
+    buzz(ok ? "ok" : "bad");
+    s.step = "checked";
+    render();
+  }
+
   const normCap = (v) => v.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я]/g, "");
 
   function levenshtein(a, b) {
@@ -718,16 +753,13 @@
 
   function submitTyped(value) {
     const s = ui.session;
-    if (!s || s.mode !== "typing") return;
-    if (s.step !== "ask") return nextQuestion();
+    if (!s || !s.keyboard) return;
+    if (s.step === "checked") return nextQuestion();
+    if (s.step !== inputStep(s)) return;
     s.typed = value.trim();
     if (!s.typed) { flash("Впишите столицу или нажмите «Не знаю»"); return; }
     s.verdict = judgeCapital(s.typed, BY[s.cur].capital);
-    const ok = s.verdict !== "wrong";
-    finishQuestion(ok, { cap: ok });
-    buzz(ok ? "ok" : "bad");
-    s.step = "checked";
-    render();
+    gradeTyped(s.verdict !== "wrong");
   }
 
   function finishQuestion(ok, extra) {
@@ -980,6 +1012,7 @@
       render();
     },
     studyClose() { ui.studySel = null; render(); },
+    examInput(el) { store.settings.examInput = el.dataset.v; save(); render(); },
     sessionLen(el) { const n = el.dataset.n; store.settings.sessionLen = n === "all" ? "all" : +n; save(); render(); },
     start(el) { startSession(el.dataset.mode); },
     again() {
@@ -1025,13 +1058,10 @@
     },
     giveUp() {
       const s = ui.session;
-      if (!s || s.mode !== "typing" || s.step !== "ask") return;
+      if (!s || !s.keyboard || s.step !== inputStep(s)) return;
       s.typed = "";
       s.verdict = "wrong";
-      finishQuestion(false, { cap: false });
-      buzz("bad");
-      s.step = "checked";
-      render();
+      gradeTyped(false);
     },
     choose(el) {
       const s = ui.session;
@@ -1119,7 +1149,9 @@
     // Карта перестраивается при смене размера (поворот, клавиатура) — снова показываем загаданную страну.
     M.afterLayout = () => {
       const s = ui.session;
-      if (ui.tab === "test" && s && !s.done && showsTarget(s.mode)) focusTarget(s.cur, 0);
+      if (ui.tab !== "test" || !s || s.done) return;
+      if (showsTarget(s.mode)) focusTarget(s.cur, 0);
+      else if (s.tapped) M.ensureVisible([s.cur, s.tapped]);
     };
     updateBadge();
     render();

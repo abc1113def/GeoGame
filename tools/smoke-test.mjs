@@ -71,6 +71,7 @@ await page.screenshot({ path: path.join(shots, "2-study-card.png") });
 
 console.log("Тест «как на экзамене»");
 await page.click('#tabbar [data-tab="test"]');
+await page.click('[data-action="examInput"][data-v="voice"]');
 await page.click('[data-action="start"][data-mode="exam"]');
 const target = await page.evaluate(() => window.__geogame.ui.session.cur);
 // Специально ошибаемся: тапаем другую страну.
@@ -100,6 +101,38 @@ for (let k = 0; k < 2; k++) {
   await page.click('[data-action="selfGrade"][data-ok="1"]');
   const st = await page.evaluate((c) => window.__geogame.store().progress[c], cur);
   if (k === 1) check(st.streak >= 1, `верный ответ (${cur}) увеличил серию`);
+}
+await page.click('[data-action="quit"]');
+
+console.log("Экзамен с вводом столицы");
+await page.click('[data-action="examInput"][data-v="keyboard"]');
+await page.click('[data-action="start"][data-mode="exam"]');
+{
+  let cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+  await tapCode(cur);
+  check(await page.evaluate(() => document.activeElement && document.activeElement.id === "capInput"), "после тапа по карте поле ввода в фокусе");
+  const cap = await page.evaluate((c) => window.__geogame.BY[c].capital, cur);
+  await page.fill("#capInput", cap.toLowerCase());
+  await page.press("#capInput", "Enter");
+  let st = await page.evaluate(() => { const s = window.__geogame.ui.session; return { v: s.verdict, ok: s.okCount, step: s.step }; });
+  check(st.v === "exact" && st.ok === 1 && st.step === "checked", "верное место + верная столица = верный ответ");
+  await page.screenshot({ path: path.join(shots, "13-exam-typed.png") });
+  await page.press("#capInput", "Enter");
+  await page.waitForFunction(() => window.__geogame.ui.session.step === "ask");
+  cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+  const wrong = cur === "PL" ? "ES" : "PL";
+  await tapCode(wrong);
+  const cap2 = await page.evaluate((c) => window.__geogame.BY[c].capital, cur);
+  await page.fill("#capInput", cap2);
+  await page.click('#capForm button[type="submit"]');
+  st = await page.evaluate((c) => ({ ok: window.__geogame.ui.session.okCount, p: window.__geogame.store().progress[c] }), cur);
+  check(st.ok === 1 && st.p.locWrong >= 1 && st.p.box === 1, "неверное место при верной столице = ошибка, страна в коробке 1");
+  await page.screenshot({ path: path.join(shots, "14-exam-typed-wrongloc.png") });
+  await page.click('#capForm button[type="submit"]');
+  cur = await page.evaluate(() => window.__geogame.ui.session.cur);
+  await tapCode(cur);
+  await page.click('[data-action="giveUp"]');
+  check(await page.evaluate(() => window.__geogame.ui.session.verdict) === "wrong", "«Не знаю» в экзамене = ошибка");
 }
 await page.click('[data-action="quit"]');
 
